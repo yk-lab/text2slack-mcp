@@ -1,0 +1,35 @@
+{
+  "name": "text2slack-mcp",
+  "version": "0.1.0",
+  "description": "MCP server to send text messages to Slack.",
+  "type": "module",
+  "bin": {
+    "text2slack-mcp": "cli.js"
+  },
+  "scripts": {
+    "start": "node cli.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "dotenv": "^16.0.0"
+  },
+  "packageManager": "pnpm@10.12.3+sha512.467df2c586056165580ad6dfb54ceaad94c5a30f80893ebdec5a44c5aa73c205ae4a5bb9d5ed6bb84ea7c249ece786642bbb49d06a307df218d03da41c317417",
+  "main": "cli.js",
+  "devDependencies": {},
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yk-lab/text2slack-mcp.git"
+  },
+  "author": "yk-lab",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/yk-lab/text2slack-mcp/issues"
+  },
+  "homepage": "https://github.com/yk-lab/text2slack-mcp#readme",
+  "keywords": [
+    "mcp",
+    "slack",
+    "webhook",
+    "integration"
+  ]
+}
