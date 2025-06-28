@@ -44,7 +44,7 @@ jobs:
           fi
 
       - name: Publish to npm with provenance
-        run: pnpm publish --no-git-checks --access public --provenance
+        run: pnpm publish --access public --provenance
         env:
           NPM_CONFIG_PROVENANCE: true
 
