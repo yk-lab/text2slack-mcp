@@ -1,0 +1,30 @@
+# yamlfmt configuration
+# https://github.com/google/yamlfmt
+
+formatter:
+  pad_line_comments: 2
+  retain_line_breaks: true
+  scan_folded_as_literal: false
+  indentless_arrays: false
+  drop_merge_tag: false
+
+  # Indentation
+  indent: 2
+
+  # Line length
+  line_ending: lf
+  max_line_length: 120
+
+  # Formatting options
+  trim_trailing_whitespace: true
+  eof_newline: true
+
+# Files to exclude
+exclude:
+  - node_modules/**
+  - coverage/**
+  - dist/**
+  - build/**
+  - .git/**
+  - "*.min.yml"
+  - "*.min.yaml"

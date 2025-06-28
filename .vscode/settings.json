@@ -1,0 +1,27 @@
+{
+  "editor.formatOnSave": true,
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": "explicit"
+  },
+  "eslint.validate": ["javascript"],
+  "files.eol": "\n",
+  "files.insertFinalNewline": true,
+  "files.trimTrailingWhitespace": true,
+  "javascript.preferences.quoteStyle": "single",
+  "editor.tabSize": 2,
+  "editor.detectIndentation": false,
+  "editor.rulers": [100],
+  "files.exclude": {
+    "node_modules": true,
+    ".env": true
+  },
+  "search.exclude": {
+    "node_modules": true,
+    "pnpm-lock.yaml": true
+  },
+  "npm.packageManager": "pnpm",
+  "testing.automaticallyOpenPeekView": "never",
+  "javascript.validate.enable": true,
+  "javascript.suggest.autoImports": true,
+  "javascript.updateImportsOnFileMove.enabled": "always"
+}
