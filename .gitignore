@@ -5,5 +5,5 @@ node_modules/
 dist/
 coverage/
 .idea/
-docs/
+docs/dev_diary/
 !docs/.gitkeep

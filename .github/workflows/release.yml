@@ -44,9 +44,10 @@ jobs:
           fi
 
       - name: Publish to npm with provenance
-        run: pnpm publish --access public --provenance
+        run: pnpm publish --no-git-checks --access public --provenance
         env:
           NPM_CONFIG_PROVENANCE: true
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2

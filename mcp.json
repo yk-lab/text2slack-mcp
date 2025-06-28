@@ -1,6 +1,6 @@
 {
   "name": "text2slack-mcp",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Send text messages to Slack via webhook",
   "tools": [
     {

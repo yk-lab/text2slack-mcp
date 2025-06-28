@@ -2,10 +2,45 @@
 
 ## Overview
 
-This project uses GitHub OIDC (OpenID Connect) for secure npm publishing without storing long-lived tokens.
+This project uses npm access tokens for automated publishing via GitHub Actions.
 All releases include cryptographic provenance attestation.
 
-## OIDC Setup (Recommended)
+## NPM Token Setup
+
+### Important Note
+
+As of June 2025, npm's OIDC (OpenID Connect) feature for GitHub Actions is still in development.
+See [GitHub community discussion](https://github.com/orgs/community/discussions/161015) for the latest status.
+Until OIDC is fully available, we use traditional npm tokens for automated releases.
+
+### Setup Steps
+
+1. **Create npm Access Token**
+
+   - Log in to your npm account at [npmjs.com](https://www.npmjs.com)
+   - Go to Account Settings → Access Tokens
+   - Click "Generate New Token" → "Classic Token"
+   - Select "Automation" type (recommended for CI/CD)
+   - Copy the generated token (starts with `npm_`)
+
+2. **Add Token to GitHub Secrets**
+
+   - Go to your GitHub repository
+   - Navigate to Settings → Secrets and variables → Actions
+   - Click "New repository secret"
+   - Name: `NPM_TOKEN`
+   - Value: Paste your npm token
+   - Click "Add secret"
+
+3. **Verify GitHub Actions Configuration**
+
+   The `.github/workflows/release.yml` is already configured to use the NPM_TOKEN:
+   ```yaml
+   env:
+     NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+   ```
+
+## OIDC Setup (Future - Currently Not Available)
 
 ### Benefits
 
@@ -30,11 +65,10 @@ All releases include cryptographic provenance attestation.
    - In package settings, enable "Require provenance"
    - This ensures all publishes have cryptographic attestation
 
-3. **Create Automation Token (Optional)**
+3. **Enable Provenance in npm**
 
-   - Create a read-only automation token in npm
-   - Add as `NPM_AUTOMATION_TOKEN` in GitHub Secrets
-   - This is only for package metadata access, not publishing
+   - In package settings, enable "Require provenance"
+   - This ensures all publishes have cryptographic attestation
 
 4. **Test the Setup**
 
@@ -44,7 +78,7 @@ All releases include cryptographic provenance attestation.
    git push origin v0.1.1-beta.1
    ```
 
-### How OIDC Works
+### How OIDC Will Work (When Available)
 
 1. GitHub Actions requests an OIDC token from GitHub
 2. The token contains claims about the workflow, repository, and ref
@@ -67,8 +101,9 @@ All releases include cryptographic provenance attestation.
 ## Prerequisites
 
 1. npm account with 2FA enabled
-2. Public GitHub repository
-3. Repository and npm package names must match
+2. npm access token (Automation type) stored in GitHub Secrets as `NPM_TOKEN`
+3. Public GitHub repository
+4. Repository and npm package names must match
 
 ## Release Process
 
@@ -101,7 +136,7 @@ git push origin v0.1.1
 
 1. **Never commit tokens** to the repository
 2. **Use minimal permissions** for any tokens
-3. **Rotate tokens regularly** if using traditional method
+3. **Rotate tokens regularly** - npm tokens should be rotated every 90 days
 4. **Monitor npm audit log** for unauthorized publishes
 5. **Enable 2FA** on npm account
 

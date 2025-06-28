@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.3] - 2025-06-28
+
+### Changed
+
+- Switched from OIDC to NPM_TOKEN for automated releases due to npm OIDC feature still being in development
+- Updated release workflow to use `NODE_AUTH_TOKEN` environment variable
+- Updated documentation to reflect the token-based authentication approach
+
+### Fixed
+
+- Added `--no-git-checks` flag to npm publish command in GitHub Actions
+- Fixed automated release authentication by using npm access tokens
+
+## [0.1.2] - 2025-06-28
+
+### Fixed
+
+- Initial OIDC configuration for npm publishing
+
 ## [0.1.1] - 2025-06-28
 
 ### Fixed
@@ -56,6 +75,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - English documentation (README.en.md)
 - Issue template for Code of Conduct violations
 
-[Unreleased]: https://github.com/yk-lab/text2slack-mcp/compare/v0.1.1...HEAD
+[Unreleased]: https://github.com/yk-lab/text2slack-mcp/compare/v0.1.3...HEAD
+[0.1.3]: https://github.com/yk-lab/text2slack-mcp/compare/v0.1.2...v0.1.3
+[0.1.2]: https://github.com/yk-lab/text2slack-mcp/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/yk-lab/text2slack-mcp/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/yk-lab/text2slack-mcp/releases/tag/v0.1.0
