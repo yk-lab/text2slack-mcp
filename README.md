@@ -1,15 +1,33 @@
 # text2slack-mcp
 
+[![npm version](https://badge.fury.io/js/text2slack-mcp.svg)](https://www.npmjs.com/package/text2slack-mcp)
+[![CI](https://github.com/yk-lab/text2slack-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/yk-lab/text2slack-mcp/actions/workflows/ci.yml)
+[![Qlty](https://qlty.sh/b/yk-lab/text2slack-mcp)](https://qlty.sh/r/yk-lab/text2slack-mcp)
+[![codecov](https://codecov.io/gh/yk-lab/text2slack-mcp/branch/main/graph/badge.svg)](https://codecov.io/gh/yk-lab/text2slack-mcp)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![MCP](https://img.shields.io/badge/MCP-v1.0.0-blue.svg)](https://modelcontextprotocol.io)
+
+日本語 | [English](README.en.md)
+
 MCP (Model Context Protocol) サーバーで、テキストメッセージを Slack に送信します。
 
 ## 概要
 
 text2slack-mcp は、AI アシスタント（Claude など）が Slack チャンネルにメッセージを送信できるようにする MCP サーバーです。Slack の Incoming Webhook を使用してメッセージを送信します。
 
+## 特徴
+
+- 🚀 シンプルで軽量な MCP サーバー実装
+- 🔒 OIDC による安全な npm パッケージ公開
+- ✅ 100% のテストカバレッジ
+- 📊 継続的な品質監視（Qlty、Codecov）
+- 🛡️ セキュリティスキャン（CodeQL、Dependabot）
+
 ## 必要な環境
 
 - Node.js 18 以降
 - Slack ワークスペースの管理者権限（Incoming Webhook の設定用）
+- MCP 対応クライアント（Claude Desktop、Claude Code など）
 
 ## インストール
 
@@ -35,16 +53,19 @@ Claude Desktop または他の MCP 対応クライアントの設定ファイル
   "mcpServers": {
     "text2slack": {
       "command": "npx",
-      "args": [
-        "-y",
-        "text2slack-mcp"
-      ],
+      "args": ["-y", "text2slack-mcp@latest"],
       "env": {
         "SLACK_WEBHOOK_URL": "YOUR_SLACK_WEBHOOK_URL_HERE"
       }
     }
   }
 }
+```
+
+Claude Code:
+
+```shell
+claude mcp add text2slack  -e SLACK_WEBHOOK_URL="YOUR_SLACK_WEBHOOK_URL_HERE" npx -- -y text2slack-mcp@latest
 ```
 
 `YOUR_SLACK_WEBHOOK_URL_HERE` を実際の Webhook URL に置き換えてください。
@@ -61,7 +82,7 @@ MCP クライアント（Claude など）から、`send_to_slack` ツールを�
 
 Claude で以下のように使用できます：
 
-```
+```plain
 「今日のミーティングの議事録をSlackに送信して」と依頼すると、
 Claude が send_to_slack ツールを使って自動的にメッセージを送信します。
 ```
@@ -70,17 +91,40 @@ Claude が send_to_slack ツールを使って自動的にメッセージを送�
 
 ```bash
 # リポジトリをクローン
-git clone <repository-url>
+git clone https://github.com/yk-lab/text2slack-mcp.git
 cd text2slack-mcp
 
-# 依存関係をインストール
-npm install
+# pnpm を使用（推奨）
+pnpm install
 
 # 環境変数を設定
 echo "SLACK_WEBHOOK_URL=your_webhook_url_here" > .env
 
 # サーバーを起動
-npm start
+pnpm start
+```
+
+### テストの実行
+
+```bash
+# 単体テストと統合テスト
+pnpm test
+
+# カバレッジレポート付き
+pnpm test:coverage
+
+# ウォッチモード
+pnpm test:watch
+```
+
+### コード品質
+
+```bash
+# Lint チェック
+pnpm lint
+
+# Lint 自動修正
+pnpm lint:fix
 ```
 
 ## トラブルシューティング
@@ -95,6 +139,32 @@ npm start
 - Slack ワークスペースでアプリが有効になっているか確認してください
 - ネットワーク接続を確認してください
 
+## プロジェクト構造
+
+```plain
+text2slack-mcp/
+├── src/
+│   ├── services/      # ビジネスロジック
+│   │   └── slack-client.js
+│   ├── tools/         # MCP ツール定義
+│   │   └── send-to-slack.js
+│   └── server/        # MCP サーバー実装
+│       └── mcp-server.js
+├── test/
+│   ├── services/      # 単体テスト
+│   ├── tools/         # 単体テスト
+│   └── integration/   # 統合テスト
+└── cli.js            # エントリーポイント
+```
+
+## 貢献
+
+プルリクエストを歓迎します！詳細は [CONTRIBUTING.md](CONTRIBUTING.md) をご覧ください。
+
+## セキュリティ
+
+セキュリティの問題を発見した場合は、[SECURITY.md](.github/SECURITY.md) の手順に従って報告してください。
+
 ## ライセンス
 
-MIT
+MIT License - 詳細は [LICENSE](LICENSE) をご覧ください。

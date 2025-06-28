@@ -1,0 +1,65 @@
+# Development files
+.env
+.env.local
+.env.*.local
+*.log
+.claude/
+
+# Test files
+test/
+coverage/
+.nyc_output/
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+.travis.yml
+
+# Editor directories and files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Documentation files that are not needed in npm package
+docs/
+CONTRIBUTING.md
+CODE_OF_CONDUCT.md
+USER_TASKS.md
+CLAUDE.md
+
+# Development configuration
+.eslintrc.json
+.eslintignore
+.prettierrc
+.editorconfig
+.qlty.yaml
+.qlty/
+.yamllint.yml
+.yamlfmt
+.markdownlint.json
+
+# Git files
+.git/
+.gitignore
+
+# MCP configuration files (users should create their own)
+.mcp.json
+mcp.json
+
+# macOS
+.DS_Store
+
+# Examples and demos (if added later)
+examples/
+demos/
+
+# Build artifacts
+dist/
+build/
+
+# Lock files (users should use their own package manager)
+pnpm-lock.yaml
+yarn.lock
+package-lock.json
