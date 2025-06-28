@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.1] - 2025-06-28
+
+### Fixed
+
+- Documentation updates for release process
+- Updated CHANGELOG format
+
+## [0.1.0] - 2025-06-28
+
 ### Added
 
 - Initial release of text2slack-mcp
@@ -47,4 +56,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - English documentation (README.en.md)
 - Issue template for Code of Conduct violations
 
-[Unreleased]: https://github.com/yk-lab/text2slack-mcp/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/yk-lab/text2slack-mcp/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/yk-lab/text2slack-mcp/compare/v0.1.0...v0.1.1
+[0.1.0]: https://github.com/yk-lab/text2slack-mcp/releases/tag/v0.1.0
