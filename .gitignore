@@ -4,6 +4,7 @@ node_modules/
 *.log
 dist/
 coverage/
+lcov.info
 .idea/
 docs/dev_diary/
 !docs/.gitkeep

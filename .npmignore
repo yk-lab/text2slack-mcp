@@ -8,6 +8,7 @@
 # Test files
 test/
 coverage/
+lcov.info
 .nyc_output/
 
 # CI/CD

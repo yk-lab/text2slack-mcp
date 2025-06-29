@@ -26,7 +26,7 @@ It uses Slack's Incoming Webhooks to deliver messages.
 
 ## Requirements
 
-- Node.js 18 or later
+- Node.js 20 or later
 - Slack workspace admin privileges (for setting up Incoming Webhooks)
 - MCP-compatible client (Claude Desktop, Claude Code, etc.)
 
