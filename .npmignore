@@ -9,6 +9,7 @@
 test/
 coverage/
 lcov.info
+junit.xml
 .nyc_output/
 
 # CI/CD

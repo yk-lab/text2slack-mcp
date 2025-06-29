@@ -67,7 +67,7 @@ Enhancement suggestions are tracked as GitHub issues. When creating an enhanceme
    pnpm test           # Run all tests
    pnpm test:unit      # Run unit tests only
    pnpm test:integration # Run integration tests
-   pnpm test:coverage  # Run tests with coverage (generates lcov.info for IDE integration)
+   pnpm test:coverage  # Run tests with coverage (generates lcov.info and junit.xml)
    ```
 
 5. Lint your code:

@@ -5,6 +5,7 @@ node_modules/
 dist/
 coverage/
 lcov.info
+junit.xml
 .idea/
 docs/dev_diary/
 !docs/.gitkeep

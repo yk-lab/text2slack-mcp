@@ -2,8 +2,9 @@
 
 [![npm version](https://badge.fury.io/js/text2slack-mcp.svg)](https://www.npmjs.com/package/text2slack-mcp)
 [![CI](https://github.com/yk-lab/text2slack-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/yk-lab/text2slack-mcp/actions/workflows/ci.yml)
-[![Qlty](https://qlty.sh/b/yk-lab/text2slack-mcp)](https://qlty.sh/r/yk-lab/text2slack-mcp)
-[![codecov](https://codecov.io/gh/yk-lab/text2slack-mcp/branch/main/graph/badge.svg)](https://codecov.io/gh/yk-lab/text2slack-mcp)
+[![Maintainability](https://qlty.sh/badges/29fc7f29-79ba-420f-965b-6db0693cc186/maintainability.svg)](https://qlty.sh/gh/yk-lab/projects/text2slack-mcp)
+[![Code Coverage](https://qlty.sh/badges/29fc7f29-79ba-420f-965b-6db0693cc186/test_coverage.svg)](https://qlty.sh/gh/yk-lab/projects/text2slack-mcp)
+[![codecov](https://codecov.io/gh/yk-lab/text2slack-mcp/graph/badge.svg?token=9zuSClrRCg)](https://codecov.io/gh/yk-lab/text2slack-mcp)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![MCP](https://img.shields.io/badge/MCP-v1.0.0-blue.svg)](https://modelcontextprotocol.io)
 
