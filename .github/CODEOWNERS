@@ -1,0 +1,18 @@
+# CODEOWNERS
+# This file defines who is responsible for code in this repository.
+# These users will be automatically requested for review when someone opens a pull request.
+# This includes pull requests opened by Dependabot.
+
+# Default owner for everything in the repo
+* @yk-lab
+
+# GitHub Actions workflows
+.github/ @yk-lab
+
+# Documentation
+*.md @yk-lab
+docs/ @yk-lab
+
+# Package files
+package.json @yk-lab
+pnpm-lock.yaml @yk-lab
