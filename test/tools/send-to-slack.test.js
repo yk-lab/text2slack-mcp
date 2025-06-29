@@ -1,5 +1,5 @@
-import { describe, it, beforeEach, mock } from 'node:test';
 import assert from 'node:assert';
+import { beforeEach, describe, it, mock } from 'node:test';
 import { sendToSlackTool } from '../../src/tools/send-to-slack.js';
 
 describe('sendToSlackTool', () => {

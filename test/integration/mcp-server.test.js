@@ -1,8 +1,8 @@
-import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert';
 import { spawn } from 'node:child_process';
-import { createServer } from 'node:http';
 import { once } from 'node:events';
+import { createServer } from 'node:http';
+import { after, before, describe, it } from 'node:test';
 import { setTimeout } from 'node:timers/promises';
 
 describe('MCP Server Integration Tests', () => {

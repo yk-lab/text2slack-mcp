@@ -14,9 +14,7 @@
             "description": "The message to send to Slack"
           }
         },
-        "required": [
-          "message"
-        ]
+        "required": ["message"]
       }
     }
   ]
