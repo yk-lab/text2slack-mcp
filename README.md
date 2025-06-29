@@ -7,6 +7,7 @@
 [![codecov](https://codecov.io/gh/yk-lab/text2slack-mcp/graph/badge.svg?token=9zuSClrRCg)](https://codecov.io/gh/yk-lab/text2slack-mcp)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![MCP](https://img.shields.io/badge/MCP-v1.0.0-blue.svg)](https://modelcontextprotocol.io)
+[![Checked with Biome](https://img.shields.io/badge/Checked_with-Biome-60a5fa?style=flat&logo=biome)](https://biomejs.dev)
 
 日本語 | [English](README.en.md)
 
