@@ -10,13 +10,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Optimized CI workflow by removing duplicate test execution
-- Updated test:coverage script to generate LCOV format coverage reports
+- Updated test:coverage script to generate LCOV format coverage reports and JUnit XML test results
 - Dropped support for Node.js 18.x (reached End-of-Life)
 - Minimum supported Node.js version is now 20.x
+- CI now runs coverage tests only on Node.js 20.x and standard tests on 22.x for faster feedback
 
 ### Added
 
 - LCOV format coverage report generation for better IDE integration
+- JUnit XML test results reporting for Codecov test analytics
 - Explicit coverage file paths for Codecov and Qlty uploads
 
 ### Fixed
