@@ -14,8 +14,6 @@ updates:
       time: "06:00"
       timezone: Asia/Tokyo
     open-pull-requests-limit: 10
-    reviewers:
-      - yk-lab
     labels:
       - dependencies
       - npm
@@ -32,8 +30,6 @@ updates:
       time: "06:00"
       timezone: Asia/Tokyo
     open-pull-requests-limit: 10
-    reviewers:
-      - yk-lab
     labels:
       - dependencies
       - github-actions
