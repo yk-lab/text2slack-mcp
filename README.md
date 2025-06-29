@@ -25,7 +25,7 @@ text2slack-mcp は、AI アシスタント（Claude など）が Slack チャン
 
 ## 必要な環境
 
-- Node.js 18 以降
+- Node.js 20 以降
 - Slack ワークスペースの管理者権限（Incoming Webhook の設定用）
 - MCP 対応クライアント（Claude Desktop、Claude Code など）
 

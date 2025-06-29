@@ -17,7 +17,7 @@ jobs:
 
     strategy:
       matrix:
-        node-version: [18.x, 20.x, 22.x]
+        node-version: [20.x, 22.x]
 
     steps:
       - uses: actions/checkout@v4
@@ -39,21 +39,20 @@ jobs:
       - name: Run lint
         run: pnpm lint
 
-      - name: Run tests
-        run: pnpm test
-
-      - name: Run coverage
+      - name: Run tests with coverage
         run: pnpm test:coverage
 
-      - name: Upload coverage reports
+      - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v5
-        if: matrix.node-version == '20.x'
+        if: ${{ !cancelled() && matrix.node-version == '20.x' }}
         with:
           use_oidc: true
+          files: ./lcov.info
 
-      - name: Upload coverage to Qlty.sh
-        if: ${{ !cancelled() }}
+      - name: Upload coverage to Qlty
+        if: ${{ !cancelled() && matrix.node-version == '20.x' }}
         uses: qltysh/qlty-action/coverage@main
         with:
           oidc: true
+          files: ./lcov.info
           tag: ${{ matrix.node-version }}
