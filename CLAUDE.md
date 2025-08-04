@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-最終更新: 2025-06-28
+最終更新: 2025-08-04
 
 ## 最重要ルール
 
@@ -163,9 +163,16 @@ text2slack-mcp/
 └── USER_TASKS.md             # ユーザータスク一覧
 ```
 
-## Recent Updates (2025-06-28)
+## Recent Updates
 
-### アーキテクチャの大幅改善
+### 2025-08-04: npm OIDC対応
+
+- npm OIDCが正式リリースされたため、トークンベースからOIDCベースのリリースに移行
+- GitHub Environmentsを使用したセキュアなリリースプロセスを導入
+- `production`環境を使用し、承認ワークフローの追加が可能に
+- ドキュメントを更新し、OIDC設定手順を詳細化
+
+### 2025-06-28: アーキテクチャの大幅改善
 
 - モジュール化によるコードの分離
 - 依存性注入パターンの採用
@@ -174,7 +181,7 @@ text2slack-mcp/
 ### CI/CDの整備
 
 - GitHub Actions（CI、リリース、セキュリティ）
-- OIDC による安全な npm 公開
+- ~~OIDC による安全な npm 公開~~ → 2025-08-04に実装完了
 - Qlty と Codecov による品質監視
 
 ### ドキュメントの充実

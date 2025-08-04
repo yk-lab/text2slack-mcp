@@ -14,17 +14,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Dropped support for Node.js 18.x (reached End-of-Life)
 - Minimum supported Node.js version is now 20.x
 - CI now runs coverage tests only on Node.js 20.x and standard tests on 22.x for faster feedback
+- **BREAKING**: Migrated from npm token-based authentication to OIDC for automated releases (August 2025)
+- Updated release workflow to use GitHub Environments for enhanced security
 
 ### Added
 
 - LCOV format coverage report generation for better IDE integration
 - JUnit XML test results reporting for Codecov test analytics
 - Explicit coverage file paths for Codecov and Qlty uploads
+- GitHub Environment setup documentation (`docs/GITHUB_ENVIRONMENT_SETUP.md`)
+- npm OIDC trusted publishers configuration for token-less publishing
 
 ### Fixed
 
 - CI workflow now correctly generates and uploads coverage reports
 - Coverage files properly excluded from Git and npm packages
+
+### Security
+
+- Eliminated long-lived npm tokens by adopting OIDC authentication
+- Added GitHub Environment protection for production releases
+- Automatic provenance attestation with OIDC publishing
 
 ## [0.1.3] - 2025-06-28
 

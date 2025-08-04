@@ -20,7 +20,7 @@ text2slack-mcp は、AI アシスタント（Claude など）が Slack チャン
 ## 特徴
 
 - 🚀 シンプルで軽量な MCP サーバー実装
-- 🔒 OIDC による安全な npm パッケージ公開
+- 🔒 npm OIDC による安全なトークンレス公開
 - ✅ 100% のテストカバレッジ
 - 📊 継続的な品質監視（Qlty、Codecov）
 - 🛡️ セキュリティスキャン（CodeQL、Dependabot）
