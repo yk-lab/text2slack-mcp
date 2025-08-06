@@ -1,0 +1,6 @@
+pre-push:
+  skip: true
+pre-commit:
+  skip: true
+commit-msg:
+  skip: true

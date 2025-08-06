@@ -1,0 +1,31 @@
+# EXAMPLE USAGE:
+#
+#   Refer for explanation to following link:
+#   https://lefthook.dev/configuration/
+#
+pre-push:
+  commands:
+    packages audit:
+      tags:
+        - frontend
+        - security
+      run: pnpm audit
+pre-commit:
+  parallel: true
+  commands:
+    lint:
+      glob: "*.{js,ts,jsx,tsx}"
+      run: pnpm lintfix {staged_files}
+      stage_fixed: true
+      skip:
+        - merge
+        - rebase
+    cspell:
+      glob: "*.{tsx,ts,mts,mcs,mjs,cjs,js,json,md,yml,yaml}"
+      run: pnpm cspell lint --gitignore --cache {staged_files}
+
+commit-msg:
+  parallel: true
+  commands:
+    spell-check:
+      run: pnpm cspell --no-summary {1}
