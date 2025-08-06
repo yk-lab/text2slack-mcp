@@ -20,7 +20,7 @@ It uses Slack's Incoming Webhooks to deliver messages.
 ## Features
 
 - 🚀 Simple and lightweight MCP server implementation
-- 🔒 Secure npm publishing with OIDC
+- 🔒 Secure token-less npm publishing with OIDC
 - ✅ 100% test coverage
 - 📊 Continuous code quality monitoring (Qlty, Codecov)
 - 🛡️ Security scanning (CodeQL, Dependabot)

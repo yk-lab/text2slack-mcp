@@ -13,6 +13,7 @@ permissions:
 jobs:
   publish:
     runs-on: ubuntu-latest
+    environment: production
 
     steps:
       - uses: actions/checkout@v4
@@ -43,11 +44,10 @@ jobs:
             exit 1
           fi
 
-      - name: Publish to npm with provenance
-        run: pnpm publish --no-git-checks --access public --provenance
+      - name: Publish to npm with OIDC
+        run: pnpm publish --no-git-checks --access public
         env:
           NPM_CONFIG_PROVENANCE: true
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2

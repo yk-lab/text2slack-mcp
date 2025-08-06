@@ -2,16 +2,72 @@
 
 ## Overview
 
-This project uses npm access tokens for automated publishing via GitHub Actions.
-All releases include cryptographic provenance attestation.
+This project uses npm OIDC (OpenID Connect) for secure, token-less automated publishing via GitHub Actions.
+All releases include automatic cryptographic provenance attestation.
 
-## NPM Token Setup
+## OIDC Setup
 
 ### Important Note
 
-As of June 2025, npm's OIDC (OpenID Connect) feature for GitHub Actions is still in development.
-See [GitHub community discussion](https://github.com/orgs/community/discussions/161015) for the latest status.
-Until OIDC is fully available, we use traditional npm tokens for automated releases.
+As of July 31, 2025, npm's OIDC (OpenID Connect) feature for GitHub Actions is now generally available!
+This eliminates the need for long-lived npm tokens, providing enhanced security and automatic provenance.
+
+### Benefits
+
+- **No long-lived tokens** in GitHub Secrets
+- **Automatic provenance** attestation
+- **Enhanced security** with short-lived, workflow-specific credentials
+- **Better auditability** and trust verification
+- **No token rotation** required
+
+### Setup Steps
+
+1. **Configure npm Trusted Publishers**
+
+   - Log in to your npm account at [npmjs.com](https://www.npmjs.com)
+   - Navigate to the package page: `https://www.npmjs.com/package/text2slack-mcp`
+   - Go to "Settings" → "Publishing access"
+   - Click "Configure trusted publishers"
+   - Add GitHub Actions as trusted publisher:
+     - **Repository**: `yk-lab/text2slack-mcp`
+     - **Workflow**: `.github/workflows/release.yml`
+     - **Environment**: `production` (recommended for additional security)
+   - Click "Add publisher"
+
+2. **Configure GitHub Environment (Recommended)**
+
+   - Go to your GitHub repository
+   - Navigate to Settings → Environments
+   - Click "New environment"
+   - Name: `production`
+   - Configure protection rules (optional but recommended):
+     - **Required reviewers**: Add trusted team members
+     - **Deployment branches**: Only allow tags matching `v*`
+   - Click "Save protection rules"
+
+3. **Verify GitHub Actions Configuration**
+
+   The `.github/workflows/release.yml` is configured to use OIDC:
+
+   ```yaml
+   permissions:
+     contents: write
+     id-token: write  # Required for OIDC
+
+   jobs:
+     publish:
+       environment: production  # Uses the configured environment
+   ```
+
+## Legacy: NPM Token Setup (Not Recommended)
+
+### When to Use Tokens
+
+Only use npm tokens if:
+
+- You haven't configured OIDC yet
+- You need to publish from outside GitHub Actions
+- You're troubleshooting OIDC issues
 
 ### Setup Steps
 
@@ -20,7 +76,7 @@ Until OIDC is fully available, we use traditional npm tokens for automated relea
    - Log in to your npm account at [npmjs.com](https://www.npmjs.com)
    - Go to Account Settings → Access Tokens
    - Click "Generate New Token" → "Classic Token"
-   - Select "Automation" type (recommended for CI/CD)
+   - Select "Automation" type
    - Copy the generated token (starts with `npm_`)
 
 2. **Add Token to GitHub Secrets**
@@ -32,56 +88,20 @@ Until OIDC is fully available, we use traditional npm tokens for automated relea
    - Value: Paste your npm token
    - Click "Add secret"
 
-3. **Verify GitHub Actions Configuration**
+3. **Update Workflow**
 
-   The `.github/workflows/release.yml` is already configured to use the NPM_TOKEN:
+   Add the token to your workflow:
+
    ```yaml
-   env:
-     NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+   - name: Publish to npm
+     env:
+       NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
    ```
 
-## OIDC Setup (Future - Currently Not Available)
-
-### Benefits
-
-- No long-lived tokens in GitHub Secrets
-- Cryptographically signed provenance
-- Better security and auditability
-- Automatic trust verification
-
-### Setup Steps
-
-1. **Configure npm Trusted Publishers**
-
-   - Go to your npm account settings
-   - Navigate to "Publishing" > "Trusted Publishers"
-   - Add GitHub Actions as trusted publisher:
-     - Repository: `yk-lab/text2slack-mcp`
-     - Workflow: `.github/workflows/release.yml`
-     - Environment: (leave empty for default)
-
-2. **Enable Provenance in npm**
-
-   - In package settings, enable "Require provenance"
-   - This ensures all publishes have cryptographic attestation
-
-3. **Enable Provenance in npm**
-
-   - In package settings, enable "Require provenance"
-   - This ensures all publishes have cryptographic attestation
-
-4. **Test the Setup**
-
-   ```bash
-   # Create a test tag
-   git tag v0.1.1-beta.1
-   git push origin v0.1.1-beta.1
-   ```
-
-### How OIDC Will Work (When Available)
+### How OIDC Works
 
 1. GitHub Actions requests an OIDC token from GitHub
-2. The token contains claims about the workflow, repository, and ref
+2. The token contains claims about the workflow, repository, ref, and environment
 3. npm validates the token against configured trusted publishers
 4. If valid, npm allows the publish without requiring an auth token
 5. Provenance statement is automatically generated and signed
@@ -92,18 +112,32 @@ Until OIDC is fully available, we use traditional npm tokens for automated relea
 
 - Ensure the repository and workflow path match exactly in npm settings
 - Check that `id-token: write` permission is set in the workflow
+- Verify the environment name matches (if configured)
+- Check that the workflow is running from the correct repository
+
+#### Error: "No trusted publishers configured"
+
+- Go to npm package settings and configure trusted publishers
+- Ensure you're logged in with the correct npm account
+- Verify you have publish permissions for the package
 
 #### Error: "Package version doesn't match tag"
 
 - Update package.json version to match the tag (without 'v' prefix)
 - Example: tag `v1.0.0` requires package.json version `1.0.0`
 
+#### Error: "Environment protection rules not satisfied"
+
+- Check GitHub environment settings
+- Ensure required reviewers have approved (if configured)
+- Verify the tag matches allowed deployment branches
+
 ## Prerequisites
 
 1. npm account with 2FA enabled
-2. npm access token (Automation type) stored in GitHub Secrets as `NPM_TOKEN`
+2. npm package already published (OIDC can't be used for first publish)
 3. Public GitHub repository
-4. Repository and npm package names must match
+4. Repository owner has permissions to configure npm trusted publishers
 
 ## Release Process
 
@@ -134,14 +168,16 @@ git push origin v0.1.1
 
 ## Security Best Practices
 
-1. **Never commit tokens** to the repository
-2. **Use minimal permissions** for any tokens
-3. **Rotate tokens regularly** - npm tokens should be rotated every 90 days
+1. **Use OIDC instead of tokens** whenever possible
+2. **Configure environment protection** for production releases
+3. **Limit trusted publishers** to specific workflows and environments
 4. **Monitor npm audit log** for unauthorized publishes
 5. **Enable 2FA** on npm account
+6. **Review trusted publishers** regularly and remove unused ones
 
 ## References
 
-- [npm Trusted Publishers](https://docs.npmjs.com/generating-provenance-statements)
+- [npm Trusted Publishers Documentation](https://docs.npmjs.com/generating-provenance-statements)
 - [GitHub OIDC for npm](https://docs.github.com/en/actions/deployment/security-hardening-your-deployments/about-security-hardening-with-openid-connect)
-- [npm Provenance](https://github.blog/2023-04-19-introducing-npm-package-provenance/)
+- [npm OIDC Announcement](https://github.blog/changelog/2025-07-31-npm-trusted-publishing-with-oidc-is-generally-available/)
+- [GitHub Environments](https://docs.github.com/en/actions/deployment/targeting-different-environments/using-environments-for-deployment)
