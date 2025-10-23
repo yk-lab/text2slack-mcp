@@ -26,7 +26,7 @@
   "devDependencies": {
     "@biomejs/biome": "2.2.6",
     "cspell": "9.2.0",
-    "lefthook": "1.12.3"
+    "lefthook": "2.0.0"
   },
   "repository": {
     "type": "git",
