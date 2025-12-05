@@ -8,6 +8,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![MCP](https://img.shields.io/badge/MCP-v1.0.0-blue.svg)](https://modelcontextprotocol.io)
 [![Checked with Biome](https://img.shields.io/badge/Checked_with-Biome-60a5fa?style=flat&logo=biome)](https://biomejs.dev)
+[![pkg-pr-new](https://github.com/stackblitz-labs/pkg.pr.new/raw/main/packages/frontend/public/badge.svg)](https://pkg.pr.new/yk-lab/text2slack-mcp)
 
 日本語 | [English](README.en.md)
 
