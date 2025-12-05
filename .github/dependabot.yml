@@ -20,6 +20,10 @@ updates:
     commit-message:
       prefix: chore
       include: scope
+    groups:
+      commitlint:
+        patterns:
+          - "@commitlint/*"
 
   # Enable version updates for GitHub Actions
   - package-ecosystem: github-actions

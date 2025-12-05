@@ -1,247 +1,235 @@
-# リリース手順
+# リリースガイド
 
-このドキュメントでは、text2slack-mcpのリリース手順について説明します。
+## 概要
+
+このプロジェクトでは **release-please** による自動リリース管理と **npm OIDC**（OpenID Connect）によるセキュアなトークンレス公開を GitHub Actions で実現しています。
+すべてのリリースには自動的に暗号学的な来歴証明（provenance attestation）が付与されます。
+
+### リリース自動化ツール
+
+- **release-please**: Conventional Commits に基づいてリリース PR を自動作成
+- **pkg-pr-new**: PR ごとにプレビューパッケージを公開し、マージ前にテスト可能
+
+## OIDC 設定
+
+### 重要な注意事項
+
+2025年7月31日より、npm の OIDC（OpenID Connect）機能が正式リリースされました。
+これにより長期間有効なトークンが不要となり、セキュリティの向上と自動来歴証明が実現されています。
+
+### メリット
+
+- GitHub Secrets に**長期トークンが不要**
+- **自動来歴証明**（provenance attestation）
+- ワークフロー固有の短期認証情報による**セキュリティ強化**
+- **監査性の向上**と信頼性検証
+- **トークンローテーション不要**
+
+### セットアップ手順
+
+1. **npm Trusted Publishers の設定**
+
+   - [npmjs.com](https://www.npmjs.com) で npm アカウントにログイン
+   - パッケージページに移動: `https://www.npmjs.com/package/text2slack-mcp`
+   - "Settings" → "Publishing access" を選択
+   - "Configure trusted publishers" をクリック
+   - GitHub Actions を trusted publisher として追加:
+     - **Repository**: `yk-lab/text2slack-mcp`
+     - **Workflow**: `.github/workflows/release-please.yml`
+     - **Environment**: `production`（セキュリティ強化のため推奨）
+   - "Add publisher" をクリック
+
+2. **GitHub Environment の設定（推奨）**
+
+   - GitHub リポジトリに移動
+   - Settings → Environments を選択
+   - "New environment" をクリック
+   - 名前: `production`
+   - 保護ルールを設定（任意だが推奨）:
+     - **Required reviewers**: 信頼できるチームメンバーを追加
+     - **Deployment branches**: `v*` に一致するタグのみ許可
+   - "Save protection rules" をクリック
+
+3. **GitHub Actions 設定の確認**
+
+   `.github/workflows/release-please.yml` は OIDC を使用するよう設定されています:
+
+   ```yaml
+   permissions:
+     contents: write
+     pull-requests: write
+     id-token: write  # OIDC に必要（publish ジョブ内）
+
+   jobs:
+     release-please:
+       # リリース PR を自動作成
+     publish:
+       needs: release-please
+       if: ${{ needs.release-please.outputs.release_created }}
+       environment: production  # 設定した環境を使用
+   ```
+
+## レガシー: NPM トークン設定（非推奨）
+
+### トークンを使用するケース
+
+以下の場合のみ npm トークンを使用してください:
+
+- OIDC をまだ設定していない
+- GitHub Actions 以外から公開する必要がある
+- OIDC の問題をトラブルシューティング中
+
+### セットアップ手順
+
+1. **npm アクセストークンの作成**
+
+   - [npmjs.com](https://www.npmjs.com) で npm アカウントにログイン
+   - Account Settings → Access Tokens に移動
+   - "Generate New Token" → "Classic Token" をクリック
+   - "Automation" タイプを選択
+   - 生成されたトークンをコピー（`npm_` で始まる）
+
+2. **GitHub Secrets にトークンを追加**
+
+   - GitHub リポジトリに移動
+   - Settings → Secrets and variables → Actions を選択
+   - "New repository secret" をクリック
+   - Name: `NPM_TOKEN`
+   - Value: npm トークンを貼り付け
+   - "Add secret" をクリック
+
+3. **ワークフローの更新**
+
+   トークンをワークフローに追加:
+
+   ```yaml
+   - name: Publish to npm
+     env:
+       NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+   ```
+
+### OIDC の仕組み
+
+1. GitHub Actions が GitHub から OIDC トークンを要求
+2. トークンにはワークフロー、リポジトリ、ref、環境に関する情報が含まれる
+3. npm が設定された trusted publishers に対してトークンを検証
+4. 有効な場合、認証トークンなしで公開を許可
+5. 来歴証明が自動的に生成・署名される
+
+### トラブルシューティング
+
+#### エラー: "OIDC token verification failed"
+
+- npm 設定でリポジトリとワークフローパスが正確に一致しているか確認
+- ワークフローに `id-token: write` 権限が設定されているか確認
+- 環境名が一致しているか確認（設定している場合）
+- ワークフローが正しいリポジトリから実行されているか確認
+
+#### エラー: "No trusted publishers configured"
+
+- npm パッケージ設定で trusted publishers を設定
+- 正しい npm アカウントでログインしているか確認
+- パッケージの公開権限があるか確認
+
+#### エラー: "Package version doesn't match tag"
+
+- package.json のバージョンをタグと一致させる（'v' プレフィックスなし）
+- 例: タグ `v1.0.0` には package.json のバージョン `1.0.0` が必要
+
+#### エラー: "Environment protection rules not satisfied"
+
+- GitHub の環境設定を確認
+- 必要なレビュアーが承認しているか確認（設定している場合）
+- タグが許可されたデプロイブランチと一致しているか確認
 
 ## 前提条件
 
-- リポジトリの管理者権限を持っていること
-- npmアカウントを持っていること（公開パッケージの場合）
-- GitHub Secretsが適切に設定されていること
+1. 2FA が有効な npm アカウント
+2. 既に公開済みの npm パッケージ（OIDC は初回公開には使用不可）
+3. パブリック GitHub リポジトリ
+4. npm trusted publishers を設定する権限
 
-## リリースフロー
+## リリースプロセス
 
-### 1. リリース準備
+### release-please による自動リリース
 
-#### 1.1 リリースブランチの作成
+このプロジェクトでは **release-please** による完全自動リリースを使用しています:
+
+1. **Conventional Commits で変更をコミット**
+
+   ```bash
+   git commit -m "feat: 新機能を追加"
+   git commit -m "fix: バグを修正"
+   ```
+
+2. **main ブランチにマージ**
+
+   - release-please がリリース PR を自動作成/更新
+   - PR にはバージョン更新と CHANGELOG の変更が含まれる
+
+3. **リリース PR をマージ**
+
+   - マージにより OIDC を使用した npm 公開が自動実行
+   - GitHub Release が自動作成される
+
+### Conventional Commits フォーマット
+
+```text
+<type>(<scope>): <description>
+
+[optional body]
+
+[optional footer(s)]
+```
+
+| Type | 説明 | リリースへの影響 |
+|------|------|-----------------|
+| `feat` | 新機能 | minor バージョン |
+| `fix` | バグ修正 | patch バージョン |
+| `feat!` または `BREAKING CHANGE:` | 破壊的変更 | major バージョン |
+| `docs`, `chore`, `ci` など | その他の変更 | リリースなし |
+
+### pkg-pr-new でのテスト
+
+マージ前に、任意の PR からパッケージをテストできます:
 
 ```bash
-# mainブランチから最新を取得
-git checkout main
-git pull origin main
-
-# リリース用のブランチを作成
-git checkout -b release/v新バージョン番号
+# PR からプレビューパッケージをインストール
+npm install https://pkg.pr.new/text2slack-mcp@<PR番号>
 ```
 
-#### 1.2 テストの実行
+### 手動リリース（レガシー）
+
+必要に応じて手動でリリースすることも可能です:
 
 ```bash
-# 全テストを実行
-pnpm test
+# 1. package.json のバージョンを更新
+npm version patch  # または minor, major
 
-# カバレッジを確認（100%を維持）
-pnpm test:coverage
+# 2. CHANGELOG.md を更新
 
-# Lintチェック
-pnpm lint
+# 3. コミットしてプッシュ
+git add .
+git commit -m "chore: release v0.1.1"
+git push
+
+# 4. タグを作成してプッシュ
+git tag v0.1.1
+git push origin v0.1.1
 ```
 
-### 2. バージョンの更新
-
-#### 2.1 package.jsonのバージョン更新
-
-```bash
-# パッチバージョンの更新（例: 1.0.0 → 1.0.1）
-npm version patch --no-git-tag-version
-
-# マイナーバージョンの更新（例: 1.0.0 → 1.1.0）
-npm version minor --no-git-tag-version
-
-# メジャーバージョンの更新（例: 1.0.0 → 2.0.0）
-npm version major --no-git-tag-version
-```
-
-#### 2.2 CHANGELOG.mdの更新
-
-```markdown
-## [新バージョン番号] - YYYY-MM-DD
-
-### 追加
-- 新機能の説明
-
-### 変更
-- 変更内容の説明
-
-### 修正
-- バグ修正の説明
-
-### 削除
-- 削除された機能の説明
-```
-
-### 3. プルリクエストの作成
-
-```bash
-# 変更をコミット
-git add package.json CHANGELOG.md
-git commit -m "chore: release v新バージョン番号"
-
-# リリースブランチをプッシュ
-git push origin release/v新バージョン番号
-
-# GitHubでプルリクエストを作成
-# タイトル: Release v新バージョン番号
-# 説明: CHANGELOG.mdの内容をコピー
-```
-
-### 4. プルリクエストのマージとタグ付け
-
-#### 4.1 プルリクエストのレビューとマージ
-
-1. CI/CDが全て成功していることを確認
-2. プルリクエストをマージ（Squash and mergeまたはMerge commit）
-
-#### 4.2 タグの作成とプッシュ
-
-```bash
-# mainブランチに切り替えて最新を取得
-git checkout main
-git pull origin main
-
-# タグを作成
-git tag -a v新バージョン番号 -m "Release v新バージョン番号"
-
-# タグをプッシュ（GitHub Actionsが自動的にnpmへ公開）
-git push origin v新バージョン番号
-```
-
-### 5. 自動リリースの確認
-
-タグをプッシュすると、GitHub Actionsが自動的に以下を実行します：
-
-1. テストの実行
-2. ビルドの確認
-3. npmへの公開（OIDCを使用）
-
-#### 5.1 GitHub Actionsの確認
-
-- [Actions](https://github.com/yohasebe/text2slack-mcp/actions)ページでリリースワークフローの状態を確認
-- 緑のチェックマークが表示されれば成功
-
-#### 5.2 npmパッケージの確認
-
-```bash
-# npmに公開されたか確認
-npm view text2slack-mcp
-
-# 最新バージョンをインストールしてテスト
-npx text2slack-mcp@latest
-```
-
-### 6. GitHubリリースの作成
-
-1. [Releases](https://github.com/yohasebe/text2slack-mcp/releases)ページへアクセス
-2. 「Draft a new release」をクリック
-3. タグを選択（v新バージョン番号）
-4. リリースタイトルを入力（例: Release v1.0.1）
-5. CHANGELOG.mdの内容をコピーして説明欄に貼り付け
-6. 「Publish release」をクリック
-
-## トラブルシューティング
-
-### npmへの公開が失敗する場合
-
-#### OIDCの設定確認
-
-1. GitHubリポジトリの設定を確認
-2. npm側のOIDC設定を確認（[npm OIDC設定ガイド](docs/RELEASE_SETUP.md)参照）
-
-#### GitHub Secretsの確認
-
-- `NPM_PACKAGE_NAME`: パッケージ名が正しいか確認
-
-### テストが失敗する場合
-
-```bash
-# ローカルでテストを実行
-pnpm test
-
-# 詳細なエラーログを確認
-pnpm test -- --verbose
-```
-
-### バージョンコンフリクトが発生する場合
-
-```bash
-# package-lock.jsonを削除して再インストール
-rm -rf node_modules pnpm-lock.yaml
-pnpm install
-```
-
-## セマンティックバージョニング
-
-バージョン番号は`MAJOR.MINOR.PATCH`の形式で管理します：
-
-- **MAJOR**: 後方互換性のない変更
-- **MINOR**: 後方互換性のある新機能
-- **PATCH**: 後方互換性のあるバグ修正
-
-### バージョン更新の判断基準
-
-| 変更内容 | バージョン更新 | 例 |
-|---------|--------------|-----|
-| バグ修正、typo修正 | PATCH | 1.0.0 → 1.0.1 |
-| 新機能追加（互換性あり） | MINOR | 1.0.0 → 1.1.0 |
-| 破壊的変更、API変更 | MAJOR | 1.0.0 → 2.0.0 |
-
-## チェックリスト
-
-リリース前に以下を確認：
-
-- [ ] すべてのテストが成功している
-- [ ] コードカバレッジが100%を維持している
-- [ ] Lintエラーがない
-- [ ] CHANGELOG.mdが更新されている
-- [ ] package.jsonのバージョンが更新されている
-- [ ] ドキュメントが最新の状態になっている
-- [ ] セキュリティの脆弱性がない（`pnpm audit`）
-
-## 緊急リリース（ホットフィックス）
-
-セキュリティ修正など緊急のリリースが必要な場合：
-
-1. mainブランチからホットフィックスブランチを作成
-2. 修正を実施してテストを実行
-3. PATCHバージョンを更新
-4. 緊急プルリクエストを作成
-
-```bash
-# 緊急修正の例
-git checkout main
-git pull origin main
-
-# ホットフィックスブランチを作成
-git checkout -b hotfix/security-fix
-
-# 修正を実施
-# ...
-
-# テスト実行
-pnpm test
-
-# バージョン更新
-npm version patch --no-git-tag-version
-
-# CHANGELOG.mdを更新してコミット
-git add -A
-git commit -m "fix: 緊急セキュリティ修正"
-
-# プルリクエストを作成
-git push origin hotfix/security-fix
-
-# マージ後、タグを作成してプッシュ
-git checkout main
-git pull origin main
-git tag -a v新バージョン番号 -m "Hotfix: v新バージョン番号"
-git push origin v新バージョン番号
-```
-
-## 関連ドキュメント
-
-- [RELEASE_SETUP.md](./RELEASE_SETUP.md) - npm OIDCの設定方法
-- [CONTRIBUTING.md](../CONTRIBUTING.md) - 貢献ガイドライン
-- [CHANGELOG.md](../CHANGELOG.md) - 変更履歴
-
-## お問い合わせ
-
-リリースに関する質問や問題がある場合は、[Issues](https://github.com/yohasebe/text2slack-mcp/issues)でお知らせください。
+## セキュリティベストプラクティス
+
+1. 可能な限り**トークンではなく OIDC を使用**
+2. 本番リリースには**環境保護を設定**
+3. **trusted publishers を特定のワークフローと環境に限定**
+4. 不正な公開がないか **npm 監査ログを監視**
+5. npm アカウントで **2FA を有効化**
+6. **trusted publishers を定期的にレビュー**し、未使用のものを削除
+
+## 参考資料
+
+- [npm Trusted Publishers ドキュメント](https://docs.npmjs.com/generating-provenance-statements)
+- [GitHub OIDC for npm](https://docs.github.com/en/actions/deployment/security-hardening-your-deployments/about-security-hardening-with-openid-connect)
+- [npm OIDC 発表](https://github.blog/changelog/2025-07-31-npm-trusted-publishing-with-oidc-is-generally-available/)
+- [GitHub Environments](https://docs.github.com/en/actions/deployment/targeting-different-environments/using-environments-for-deployment)

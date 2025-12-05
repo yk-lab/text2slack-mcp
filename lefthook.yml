@@ -15,7 +15,7 @@ pre-commit:
   commands:
     lint:
       glob: "*.{js,ts,jsx,tsx}"
-      run: pnpm lintfix {staged_files}
+      run: pnpm lint:fix {staged_files}
       stage_fixed: true
       skip:
         - merge
@@ -27,5 +27,7 @@ pre-commit:
 commit-msg:
   parallel: true
   commands:
+    commitlint:
+      run: pnpm commitlint --edit {1}
     spell-check:
       run: pnpm cspell --no-summary {1}

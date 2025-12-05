@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-最終更新: 2025-08-04
+最終更新: 2025-12-06
 
 ## 最重要ルール
 
@@ -149,7 +149,8 @@ text2slack-mcp/
 │   └── integration/          # 統合テスト
 ├── docs/                      # ドキュメント
 │   ├── dev_diary/            # 開発日誌
-│   └── RELEASE_SETUP.md      # リリース設定ガイド
+│   ├── PR_CHECKLIST.md       # PRチェックリスト
+│   └── RELEASE.md            # リリースガイド
 ├── .github/                   # GitHub設定
 │   ├── workflows/            # GitHub Actions
 │   ├── ISSUE_TEMPLATE/       # Issueテンプレート
@@ -164,6 +165,13 @@ text2slack-mcp/
 ```
 
 ## Recent Updates
+
+### 2025-12-06: リリース自動化の導入
+
+- release-please による自動リリース管理を導入
+- pkg-pr-new による PR プレビューパッケージ機能を追加
+- Conventional Commits ルールを必須化
+- commitlint によるコミットメッセージの自動検証を追加
 
 ### 2025-08-04: npm OIDC対応
 
@@ -204,12 +212,71 @@ text2slack-mcp/
 - カバレッジが100%を下回らないよう注意
 - 新機能追加時は対応するテストも作成
 
-### リリースプロセス
+### リリースプロセス（release-please による自動化）
 
-1. package.json のバージョンを更新
-2. CHANGELOG.md に変更内容を記載
-3. git tag でバージョンタグを作成
-4. GitHub Actions が自動的に npm へ公開
+1. Conventional Commits 形式でコミット
+2. main ブランチにマージすると release-please が自動でリリース PR を作成
+3. リリース PR をマージすると自動的に npm へ公開
+
+### Conventional Commits ルール
+
+**必須**: すべてのコミットメッセージは以下の形式に従うこと。
+
+```
+<type>(<scope>): <description>
+
+[optional body]
+
+[optional footer(s)]
+```
+
+#### Type（必須）
+
+| Type | 説明 | リリースへの影響 |
+|------|------|-----------------|
+| `feat` | 新機能の追加 | minor バージョンアップ |
+| `fix` | バグ修正 | patch バージョンアップ |
+| `docs` | ドキュメントのみの変更 | リリースなし |
+| `style` | コードの意味に影響しない変更（空白、フォーマット等） | リリースなし |
+| `refactor` | バグ修正でも機能追加でもないコード変更 | リリースなし |
+| `perf` | パフォーマンス改善 | patch バージョンアップ |
+| `test` | テストの追加・修正 | リリースなし |
+| `build` | ビルドシステムや外部依存の変更 | リリースなし |
+| `ci` | CI 設定ファイルやスクリプトの変更 | リリースなし |
+| `chore` | その他の変更（src や test を含まない） | リリースなし |
+
+#### Scope（任意）
+
+変更の影響範囲を示す。例: `slack-client`, `mcp-server`, `deps`
+
+#### Breaking Changes
+
+破壊的変更がある場合は、type の後に `!` を付けるか、footer に `BREAKING CHANGE:` を記載。
+
+```
+feat!: remove deprecated API endpoint
+
+BREAKING CHANGE: The /v1/send endpoint has been removed. Use /v2/send instead.
+```
+
+#### コミットメッセージ例
+
+```bash
+# 新機能
+feat(slack-client): add support for message formatting
+
+# バグ修正
+fix(mcp-server): handle connection timeout properly
+
+# ドキュメント
+docs: update README with new configuration options
+
+# 依存関係の更新
+chore(deps): bump @modelcontextprotocol/sdk to v1.1.0
+
+# 破壊的変更を含む修正
+fix!: change webhook URL environment variable name
+```
 
 ## コーディング規約
 
