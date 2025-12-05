@@ -23,6 +23,7 @@
     "isexe",
     "lefthook",
     "lintfix",
+    "MCP",
     "mktemp",
     "modelcontextprotocol",
     "monkeyc",

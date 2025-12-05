@@ -70,11 +70,9 @@ npm install https://pkg.pr.new/yk-lab/text2slack-mcp@42
 [MCP Inspector](https://github.com/modelcontextprotocol/inspector) を使用して、MCP サーバーの動作を確認します。
 
 ```bash
-# MCP Inspector をインストール（初回のみ）
-npm install -g @modelcontextprotocol/inspector
-
-# プレビューパッケージで Inspector を起動
-npx @modelcontextprotocol/inspector https://pkg.pr.new/yk-lab/text2slack-mcp@<PR番号>
+# 環境変数を設定して Inspector を起動
+SLACK_WEBHOOK_URL=https://hooks.slack.com/services/YOUR/WEBHOOK/URL \
+  npx @modelcontextprotocol/inspector npx https://pkg.pr.new/yk-lab/text2slack-mcp@<PR番号>
 ```
 
 #### Inspector での確認項目
@@ -125,11 +123,9 @@ release-please が自動的にリリース PR を作成した後、マージ前�
 これを使用して最終確認を行います。
 
 ```bash
-# リリース PR のプレビューパッケージをテスト
-npm install https://pkg.pr.new/yk-lab/text2slack-mcp@<リリースPR番号>
-
-# Inspector で動作確認
-npx @modelcontextprotocol/inspector https://pkg.pr.new/yk-lab/text2slack-mcp@<リリースPR番号>
+# 環境変数を設定して Inspector を起動
+SLACK_WEBHOOK_URL=https://hooks.slack.com/services/YOUR/WEBHOOK/URL \
+  npx @modelcontextprotocol/inspector npx https://pkg.pr.new/yk-lab/text2slack-mcp@<リリースPR番号>
 ```
 
 ### 3. セキュリティ確認
