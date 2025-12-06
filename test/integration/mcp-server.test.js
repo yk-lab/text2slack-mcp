@@ -5,6 +5,36 @@ import { createServer } from 'node:http';
 import { after, before, describe, it } from 'node:test';
 import { setTimeout } from 'node:timers/promises';
 
+/**
+ * Helper function to send MCP initialize request
+ * @param {import('node:child_process').ChildProcess} server
+ */
+async function initializeMcp(server) {
+  const initRequest = {
+    jsonrpc: '2.0',
+    method: 'initialize',
+    params: {
+      protocolVersion: '2024-11-05',
+      capabilities: {},
+      clientInfo: { name: 'test-client', version: '1.0.0' },
+    },
+    id: 0,
+  };
+
+  server.stdin.write(JSON.stringify(initRequest) + '\n');
+
+  const [data] = await Promise.race([
+    once(server.stdout, 'data'),
+    setTimeout(5000).then(() => {
+      throw new Error('Timeout waiting for initialize response');
+    }),
+  ]);
+
+  const response = JSON.parse(data.toString().trim());
+  assert.strictEqual(response.id, 0);
+  assert(response.result);
+}
+
 describe('MCP Server Integration Tests', () => {
   let mockSlackServer;
   let mockSlackPort;
@@ -50,6 +80,9 @@ describe('MCP Server Integration Tests', () => {
     });
 
     try {
+      // Initialize MCP connection first
+      await initializeMcp(server);
+
       // Send list tools request
       const request = {
         jsonrpc: '2.0',
@@ -93,8 +126,8 @@ describe('MCP Server Integration Tests', () => {
     });
 
     try {
-      // Wait for server to be ready
-      await setTimeout(100);
+      // Initialize MCP connection first
+      await initializeMcp(server);
 
       // Send tool call request
       const request = {
@@ -161,6 +194,9 @@ describe('MCP Server Integration Tests', () => {
     });
 
     try {
+      // Initialize MCP connection first
+      await initializeMcp(server);
+
       // Send invalid tool call
       const request = {
         jsonrpc: '2.0',
@@ -217,7 +253,8 @@ describe('MCP Server Integration Tests', () => {
     });
 
     try {
-      await setTimeout(100);
+      // Initialize MCP connection first
+      await initializeMcp(server);
 
       const request = {
         jsonrpc: '2.0',
