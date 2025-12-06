@@ -5,12 +5,7 @@ import {
   type CallToolResult,
   ListToolsRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js';
-import type { ToolDefinition, ToolHandler } from '../tools/send-to-slack.js';
-
-export interface Tool {
-  definition: ToolDefinition;
-  handler: ToolHandler;
-}
+import type { Tool, ToolHandler } from '../types/index.js';
 
 export class MCPServer {
   private readonly tools: Tool[];
@@ -67,7 +62,7 @@ export class MCPServer {
           };
         }
 
-        const result = await handler(args as { message: string });
+        const result = await handler(args as Record<string, unknown>);
         return {
           content: result.content,
           isError: result.isError,

@@ -21,7 +21,7 @@
     "test:unit": "node --test test/services test/tools",
     "test:integration": "node --test test/integration/**/*.test.js",
     "test:watch": "node --test --watch",
-    "test:coverage": "node --test --experimental-test-coverage --test-reporter=spec --test-reporter-destination=stdout --test-reporter=lcov --test-reporter-destination=lcov.info --test-reporter=junit --test-reporter-destination=junit.xml test/**/*.test.js",
+    "test:coverage": "node --test --test-timeout=30000 --experimental-test-coverage --test-reporter=spec --test-reporter-destination=stdout --test-reporter=lcov --test-reporter-destination=lcov.info --test-reporter=junit --test-reporter-destination=junit.xml test/**/*.test.js",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

@@ -1,30 +1,16 @@
 import type { SlackClient } from '../services/slack-client.js';
+import type {
+  ToolDefinition,
+  ToolHandler,
+  ToolResponse,
+} from '../types/index.js';
 
-export interface ToolDefinition {
-  name: string;
-  description: string;
-  inputSchema: {
-    type: string;
-    properties: Record<string, { type: string; description: string }>;
-    required: string[];
-  };
-}
-
-export interface TextContent {
-  type: 'text';
-  text: string;
-}
-
-export interface ToolResponse {
-  content: TextContent[];
-  isError?: boolean;
-}
-
+/**
+ * Arguments for the send_to_slack tool
+ */
 export interface SendToSlackArgs {
   message: string;
 }
-
-export type ToolHandler = (args: SendToSlackArgs) => Promise<ToolResponse>;
 
 export const sendToSlackTool = {
   definition: {
@@ -43,7 +29,7 @@ export const sendToSlackTool = {
   } as ToolDefinition,
 
   handler:
-    (slackClient: SlackClient): ToolHandler =>
+    (slackClient: SlackClient): ToolHandler<SendToSlackArgs> =>
     async (args: SendToSlackArgs): Promise<ToolResponse> => {
       const { message } = args;
 

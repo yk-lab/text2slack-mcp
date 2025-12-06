@@ -42,6 +42,7 @@ jobs:
       - name: Run tests with coverage
         if: matrix.node-version == '24.x'
         run: pnpm test:coverage
+        timeout-minutes: 5
 
       - name: Run tests
         if: matrix.node-version != '24.x'
