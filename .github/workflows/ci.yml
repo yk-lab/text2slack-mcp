@@ -39,6 +39,9 @@ jobs:
       - name: Run lint
         run: pnpm lint
 
+      - name: Build
+        run: pnpm build
+
       - name: Run tests with coverage
         if: matrix.node-version == '22.x'
         run: pnpm test:coverage
