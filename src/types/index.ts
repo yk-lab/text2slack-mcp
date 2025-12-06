@@ -3,14 +3,21 @@
  */
 
 /**
- * Definition of an MCP tool
+ * JSON Schema property definition for tool input
  */
+export interface SchemaProperty {
+  type: string;
+  description: string;
+  enum?: string[];
+  default?: unknown;
+}
+
 export interface ToolDefinition {
   name: string;
   description: string;
   inputSchema: {
-    type: string;
-    properties: Record<string, { type: string; description: string }>;
+    type: 'object';
+    properties: Record<string, SchemaProperty>;
     required: string[];
   };
 }

@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { SlackClient } from '../../src/services/slack-client.js';
 
 describe('SlackClient', () => {
@@ -8,6 +8,10 @@ describe('SlackClient', () => {
   beforeEach(() => {
     client = new SlackClient(mockWebhookUrl);
     vi.restoreAllMocks();
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
   });
 
   describe('constructor', () => {

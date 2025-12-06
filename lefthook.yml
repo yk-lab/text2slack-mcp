@@ -14,14 +14,14 @@ pre-commit:
   parallel: true
   commands:
     lint:
-      glob: '*.{js,ts,jsx,tsx}'
+      glob: "*.{js,ts,jsx,tsx}"
       run: pnpm lint:fix {staged_files}
       stage_fixed: true
       skip:
         - merge
         - rebase
     cspell:
-      glob: '*.{tsx,ts,mts,mcs,mjs,cjs,js,json,md,yml,yaml}'
+      glob: "*.{tsx,ts,mts,mcs,mjs,cjs,js,json,md,yml,yaml}"
       exclude: cspell.json
       run: pnpm cspell lint --config cspell.json --gitignore --cache {staged_files}
 

@@ -280,7 +280,7 @@ describe('MCP Server Integration Tests', () => {
       );
     } finally {
       await cleanup();
-      errorServer.close();
+      await new Promise<void>((resolve) => errorServer.close(() => resolve()));
     }
   });
 });
