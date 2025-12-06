@@ -23,12 +23,12 @@ const tools = [
 ];
 
 // Create and start server
-async function main() {
+async function main(): Promise<void> {
   const server = new MCPServer(tools);
   await server.start();
 }
 
-main().catch((error) => {
+main().catch((error: unknown) => {
   console.error('Server error:', error);
   process.exit(1);
 });

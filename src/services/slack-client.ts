@@ -1,12 +1,19 @@
+export interface SendMessageResult {
+  success: boolean;
+  message: string;
+}
+
 export class SlackClient {
-  constructor(webhookUrl) {
+  private readonly webhookUrl: string;
+
+  constructor(webhookUrl: string) {
     if (!webhookUrl) {
       throw new Error('Slack webhook URL is required');
     }
     this.webhookUrl = webhookUrl;
   }
 
-  async sendMessage(message) {
+  async sendMessage(message: string): Promise<SendMessageResult> {
     if (!message || typeof message !== 'string') {
       throw new Error('Message must be a non-empty string');
     }
