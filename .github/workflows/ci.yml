@@ -56,7 +56,7 @@ jobs:
         if: ${{ !cancelled() && matrix.node-version == '22.x' }}
         with:
           use_oidc: true
-          files: ./lcov.info
+          files: ./coverage/lcov.info
 
       - name: Upload test results to Codecov
         if: ${{ !cancelled() && matrix.node-version == '22.x' }}
@@ -70,5 +70,5 @@ jobs:
         uses: qltysh/qlty-action/coverage@main
         with:
           oidc: true
-          files: ./lcov.info
+          files: ./coverage/lcov.info
           tag: ${{ matrix.node-version }}

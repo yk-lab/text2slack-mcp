@@ -16,6 +16,7 @@
     "pretest",
     "qltysh",
     "tsconfig",
+    "vitest",
     "webhook",
     "webhooks"
   ],

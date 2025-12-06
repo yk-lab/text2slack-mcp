@@ -1,17 +1,33 @@
-import assert from 'node:assert';
+import type { ChildProcess } from 'node:child_process';
 import { spawn } from 'node:child_process';
 import { once } from 'node:events';
+import type { IncomingMessage, Server, ServerResponse } from 'node:http';
 import { createServer } from 'node:http';
-import { after, before, describe, it } from 'node:test';
 import { setTimeout } from 'node:timers/promises';
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+
+interface JsonRpcResponse {
+  jsonrpc: string;
+  id: number;
+  result?: {
+    tools?: Array<{ name: string }>;
+    content?: Array<{ type: string; text: string }>;
+    isError?: boolean;
+  };
+}
+
+interface ReceivedRequest {
+  method: string | undefined;
+  url: string | undefined;
+  headers: IncomingMessage['headers'];
+  body: string;
+}
 
 /**
  * Parse the first complete JSON line from a data buffer
  * Handles cases where multiple JSON messages might be in a single chunk
- * @param {Buffer} data - Raw data from stdout
- * @returns {object} Parsed JSON object
  */
-function parseFirstJsonLine(data) {
+function parseFirstJsonLine(data: Buffer): JsonRpcResponse {
   const lines = data
     .toString()
     .split('\n')
@@ -19,31 +35,31 @@ function parseFirstJsonLine(data) {
   if (lines.length === 0) {
     throw new Error('No JSON data received');
   }
-  return JSON.parse(lines[0]);
+  return JSON.parse(lines[0]) as JsonRpcResponse;
 }
 
 /**
  * Wait for a JSON response from the server with timeout
- * @param {import('node:child_process').ChildProcess} server
- * @param {number} timeoutMs
- * @returns {Promise<object>}
  */
-async function waitForResponse(server, timeoutMs = 5000) {
-  const [data] = await Promise.race([
-    once(server.stdout, 'data'),
+async function waitForResponse(
+  server: ChildProcess,
+  timeoutMs = 5000,
+): Promise<JsonRpcResponse> {
+  const [data] = (await Promise.race([
+    once(server.stdout!, 'data'),
     setTimeout(timeoutMs).then(() => {
       throw new Error(`Timeout waiting for response after ${timeoutMs}ms`);
     }),
-  ]);
+  ])) as [Buffer];
   return parseFirstJsonLine(data);
 }
 
 /**
  * Create and initialize an MCP test server
- * @param {string} webhookUrl - Slack webhook URL for testing
- * @returns {Promise<{server: import('node:child_process').ChildProcess, cleanup: () => Promise<void>}>}
  */
-async function createMcpTestServer(webhookUrl) {
+async function createMcpTestServer(
+  webhookUrl: string,
+): Promise<{ server: ChildProcess; cleanup: () => Promise<void> }> {
   const server = spawn('node', ['dist/cli.js'], {
     env: {
       ...process.env,
@@ -64,11 +80,11 @@ async function createMcpTestServer(webhookUrl) {
     id: 0,
   };
 
-  server.stdin.write(JSON.stringify(initRequest) + '\n');
+  server.stdin!.write(JSON.stringify(initRequest) + '\n');
 
   const response = await waitForResponse(server);
-  assert.strictEqual(response.id, 0);
-  assert(response.result);
+  expect(response.id).toBe(0);
+  expect(response.result).toBeDefined();
 
   const cleanup = async () => {
     server.kill();
@@ -80,48 +96,57 @@ async function createMcpTestServer(webhookUrl) {
 
 /**
  * Send an MCP request and wait for response
- * @param {import('node:child_process').ChildProcess} server
- * @param {object} request - JSON-RPC request object
- * @returns {Promise<object>}
  */
-async function sendRequest(server, request) {
-  server.stdin.write(JSON.stringify(request) + '\n');
+async function sendRequest(
+  server: ChildProcess,
+  request: object,
+): Promise<JsonRpcResponse> {
+  server.stdin!.write(JSON.stringify(request) + '\n');
   return waitForResponse(server);
 }
 
 describe('MCP Server Integration Tests', () => {
-  let mockSlackServer;
-  let mockSlackPort;
-  let receivedRequests = [];
+  let mockSlackServer: Server;
+  let mockSlackPort: number;
+  let receivedRequests: ReceivedRequest[] = [];
 
-  before(async () => {
+  beforeAll(async () => {
     // Create mock Slack server
-    mockSlackServer = createServer((req, res) => {
-      let body = '';
-      req.on('data', (chunk) => (body += chunk));
-      req.on('end', () => {
-        receivedRequests.push({
-          method: req.method,
-          url: req.url,
-          headers: req.headers,
-          body: body,
+    mockSlackServer = createServer(
+      (req: IncomingMessage, res: ServerResponse) => {
+        let body = '';
+        req.on('data', (chunk: Buffer) => (body += chunk.toString()));
+        req.on('end', () => {
+          receivedRequests.push({
+            method: req.method,
+            url: req.url,
+            headers: req.headers,
+            body: body,
+          });
+          res.writeHead(200, { 'Content-Type': 'text/plain' });
+          res.end('ok');
         });
-        res.writeHead(200, { 'Content-Type': 'text/plain' });
-        res.end('ok');
-      });
-    });
+      },
+    );
 
     // Start mock server and get random port
-    await new Promise((resolve) => {
+    await new Promise<void>((resolve) => {
       mockSlackServer.listen(0, '127.0.0.1', () => {
-        mockSlackPort = mockSlackServer.address().port;
+        const address = mockSlackServer.address();
+        if (address && typeof address === 'object') {
+          mockSlackPort = address.port;
+        }
         resolve();
       });
     });
   });
 
-  after(() => {
+  afterAll(() => {
     mockSlackServer.close();
+  });
+
+  beforeEach(() => {
+    receivedRequests = [];
   });
 
   it('should list available tools', async () => {
@@ -136,20 +161,18 @@ describe('MCP Server Integration Tests', () => {
         id: 1,
       });
 
-      assert.strictEqual(response.jsonrpc, '2.0');
-      assert.strictEqual(response.id, 1);
-      assert(response.result);
-      assert(Array.isArray(response.result.tools));
-      assert.strictEqual(response.result.tools.length, 1);
-      assert.strictEqual(response.result.tools[0].name, 'send_to_slack');
+      expect(response.jsonrpc).toBe('2.0');
+      expect(response.id).toBe(1);
+      expect(response.result).toBeDefined();
+      expect(Array.isArray(response.result?.tools)).toBe(true);
+      expect(response.result?.tools?.length).toBe(1);
+      expect(response.result?.tools?.[0].name).toBe('send_to_slack');
     } finally {
       await cleanup();
     }
   });
 
   it('should send message to Slack successfully', async () => {
-    receivedRequests = []; // Clear previous requests
-
     const { server, cleanup } = await createMcpTestServer(
       `http://127.0.0.1:${mockSlackPort}/webhook`,
     );
@@ -168,29 +191,24 @@ describe('MCP Server Integration Tests', () => {
       });
 
       // Verify MCP response
-      assert.strictEqual(response.jsonrpc, '2.0');
-      assert.strictEqual(response.id, 2);
-      assert(response.result);
-      assert(response.result.content);
-      assert.strictEqual(response.result.content[0].type, 'text');
-      assert(
-        response.result.content[0].text.includes(
-          'Successfully posted to Slack',
-        ),
+      expect(response.jsonrpc).toBe('2.0');
+      expect(response.id).toBe(2);
+      expect(response.result).toBeDefined();
+      expect(response.result?.content).toBeDefined();
+      expect(response.result?.content?.[0].type).toBe('text');
+      expect(response.result?.content?.[0].text).toContain(
+        'Successfully posted to Slack',
       );
 
       // Verify Slack webhook was called
-      assert.strictEqual(receivedRequests.length, 1);
+      expect(receivedRequests.length).toBe(1);
       const slackRequest = receivedRequests[0];
-      assert.strictEqual(slackRequest.method, 'POST');
-      assert.strictEqual(slackRequest.url, '/webhook');
-      assert.strictEqual(
-        slackRequest.headers['content-type'],
-        'application/json',
-      );
+      expect(slackRequest.method).toBe('POST');
+      expect(slackRequest.url).toBe('/webhook');
+      expect(slackRequest.headers['content-type']).toBe('application/json');
 
       const slackBody = JSON.parse(slackRequest.body);
-      assert.strictEqual(slackBody.text, 'Integration test message');
+      expect(slackBody.text).toBe('Integration test message');
     } finally {
       await cleanup();
     }
@@ -212,11 +230,11 @@ describe('MCP Server Integration Tests', () => {
         id: 3,
       });
 
-      assert.strictEqual(response.jsonrpc, '2.0');
-      assert.strictEqual(response.id, 3);
-      assert(response.result);
-      assert.strictEqual(response.result.isError, true);
-      assert(response.result.content[0].text.includes('Unknown tool'));
+      expect(response.jsonrpc).toBe('2.0');
+      expect(response.id).toBe(3);
+      expect(response.result).toBeDefined();
+      expect(response.result?.isError).toBe(true);
+      expect(response.result?.content?.[0].text).toContain('Unknown tool');
     } finally {
       await cleanup();
     }
@@ -224,16 +242,17 @@ describe('MCP Server Integration Tests', () => {
 
   it('should handle Slack webhook failure', async () => {
     // Create a mock server that returns error
-    const errorServer = createServer((req, res) => {
+    const errorServer = createServer((_req, res) => {
       res.writeHead(500, { 'Content-Type': 'text/plain' });
       res.end('Internal Server Error');
     });
 
-    await new Promise((resolve) => {
+    await new Promise<void>((resolve) => {
       errorServer.listen(0, '127.0.0.1', resolve);
     });
 
-    const errorPort = errorServer.address().port;
+    const address = errorServer.address();
+    const errorPort = address && typeof address === 'object' ? address.port : 0;
 
     const { server, cleanup } = await createMcpTestServer(
       `http://127.0.0.1:${errorPort}/webhook`,
@@ -252,14 +271,12 @@ describe('MCP Server Integration Tests', () => {
         id: 4,
       });
 
-      assert.strictEqual(response.jsonrpc, '2.0');
-      assert.strictEqual(response.id, 4);
-      assert(response.result);
-      assert.strictEqual(response.result.isError, true);
-      assert(
-        response.result.content[0].text.includes(
-          'Failed to send message to Slack',
-        ),
+      expect(response.jsonrpc).toBe('2.0');
+      expect(response.id).toBe(4);
+      expect(response.result).toBeDefined();
+      expect(response.result?.isError).toBe(true);
+      expect(response.result?.content?.[0].text).toContain(
+        'Failed to send message to Slack',
       );
     } finally {
       await cleanup();

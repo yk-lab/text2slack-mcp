@@ -17,12 +17,11 @@
     "lint": "biome check .",
     "lint:fix": "biome check --write .",
     "pretest": "pnpm build",
-    "test": "node --test test/**/*.test.js",
-    "test:unit": "node --test test/services test/tools",
-    "test:integration": "node --test test/integration/**/*.test.js",
-    "test:watch": "node --test --watch",
-    "pretest:coverage": "pnpm build",
-    "test:coverage": "node --test --test-timeout=30000 --experimental-test-coverage --test-reporter=spec --test-reporter-destination=stdout --test-reporter=lcov --test-reporter-destination=lcov.info --test-reporter=junit --test-reporter-destination=junit.xml test/**/*.test.js",
+    "test": "vitest run",
+    "test:unit": "vitest run test/services test/tools",
+    "test:integration": "vitest run test/integration",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
@@ -40,9 +39,11 @@
     "@commitlint/cli": "20.2.0",
     "@commitlint/config-conventional": "20.2.0",
     "@types/node": "24.10.1",
+    "@vitest/coverage-v8": "4.0.15",
     "cspell": "9.4.0",
     "lefthook": "2.0.8",
-    "typescript": "5.9.3"
+    "typescript": "5.9.3",
+    "vitest": "4.0.15"
   },
   "repository": {
     "type": "git",

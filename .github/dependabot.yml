@@ -24,6 +24,10 @@ updates:
       commitlint:
         patterns:
           - "@commitlint/*"
+      vitest:
+        patterns:
+          - "vitest"
+          - "@vitest/*"
 
   # Enable version updates for GitHub Actions
   - package-ecosystem: github-actions
