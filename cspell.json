@@ -10,9 +10,13 @@
     "modelcontextprotocol",
     "npmjs",
     "pnpx",
+    "prebuild",
+    "prepublish",
+    "prestart",
+    "pretest",
     "tsconfig",
     "webhook",
     "webhooks"
   ],
-  "ignorePaths": ["node_modules", "dist", "pnpm-lock.yaml"]
+  "ignorePaths": ["node_modules", "dist", "pnpm-lock.yaml", "cspell.json"]
 }

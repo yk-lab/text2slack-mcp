@@ -8,9 +8,11 @@
   },
   "scripts": {
     "prepare": "lefthook install",
+    "prepublishOnly": "pnpm build",
     "build": "tsc",
     "clean": "rm -rf dist",
     "prebuild": "pnpm clean",
+    "prestart": "pnpm build",
     "start": "node dist/cli.js",
     "lint": "biome check .",
     "lint:fix": "biome check --write .",

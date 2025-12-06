@@ -22,6 +22,7 @@ pre-commit:
         - rebase
     cspell:
       glob: "*.{tsx,ts,mts,mcs,mjs,cjs,js,json,md,yml,yaml}"
+      exclude: "cspell.json"
       run: pnpm cspell lint --gitignore --cache {staged_files}
 
 commit-msg:

@@ -13,9 +13,9 @@ export interface Tool {
 }
 
 export class MCPServer {
-  private tools: Tool[];
-  private toolHandlers: Map<string, ToolHandler>;
-  private server: Server;
+  private readonly tools: Tool[];
+  private readonly toolHandlers: Map<string, ToolHandler>;
+  private readonly server: Server;
 
   constructor(tools: Tool[] = []) {
     this.tools = tools;
