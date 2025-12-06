@@ -23,7 +23,7 @@ pre-commit:
     cspell:
       glob: '*.{tsx,ts,mts,mcs,mjs,cjs,js,json,md,yml,yaml}'
       exclude: cspell.json
-      run: pnpm cspell lint --gitignore --cache {staged_files}
+      run: pnpm cspell lint --config cspell.json --gitignore --cache {staged_files}
 
 commit-msg:
   parallel: true
