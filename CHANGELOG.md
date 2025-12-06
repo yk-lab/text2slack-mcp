@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.0](https://github.com/yk-lab/text2slack-mcp/compare/v0.1.3...v1.0.0) (2025-12-06)
+
+
+### ⚠ BREAKING CHANGES
+
+* npm publishing now requires OIDC trusted publisher configuration
+
+### Features
+
+* add JUnit test results reporting to CI workflow ([#8](https://github.com/yk-lab/text2slack-mcp/issues/8)) ([e2e7fa9](https://github.com/yk-lab/text2slack-mcp/commit/e2e7fa9c6303041ac05cbda6a071be4c8d328a17))
+* add release-please and pkg-pr-new for automated releases ([#73](https://github.com/yk-lab/text2slack-mcp/issues/73)) ([7e1acd5](https://github.com/yk-lab/text2slack-mcp/commit/7e1acd557f8f6ff842654eb56322870cab6f4219))
+* migrate codebase to TypeScript ([#77](https://github.com/yk-lab/text2slack-mcp/issues/77)) ([87a08bc](https://github.com/yk-lab/text2slack-mcp/commit/87a08bc1c809815d24d9b93711bdc758e3702e6e))
+* migrate npm publishing from token-based to OIDC authentication ([#21](https://github.com/yk-lab/text2slack-mcp/issues/21)) ([c110ae8](https://github.com/yk-lab/text2slack-mcp/commit/c110ae840dd28ba1eab3a1c590534136ff797a5b))
+
+
+### Bug Fixes
+
+* optimize CI coverage workflow and add lcov.info to ignore files ([#7](https://github.com/yk-lab/text2slack-mcp/issues/7)) ([1cbf630](https://github.com/yk-lab/text2slack-mcp/commit/1cbf6304db5ddcb19b7bdeeb6c601abed1b343c6))
+* replace dependabot reviewers with CODEOWNERS ([#5](https://github.com/yk-lab/text2slack-mcp/issues/5)) ([5c6f8c2](https://github.com/yk-lab/text2slack-mcp/commit/5c6f8c240d6fd050d8990e039f99fd4f08230d90))
+
 ## [Unreleased]
 
 ### Changed
