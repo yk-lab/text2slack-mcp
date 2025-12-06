@@ -35,13 +35,15 @@ export interface ToolResponse {
  * Generic handler function for MCP tools
  * @template T - The type of arguments the handler accepts
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export type ToolHandler<T = any> = (args: T) => Promise<ToolResponse>;
+export type ToolHandler<T extends object = Record<string, unknown>> = (
+  args: T,
+) => Promise<ToolResponse>;
 
 /**
  * A complete tool with its definition and handler
+ * Uses a contravariant handler type to allow any tool arguments
  */
 export interface Tool {
   definition: ToolDefinition;
-  handler: ToolHandler;
+  handler: ToolHandler<any>; // eslint-disable-line @typescript-eslint/no-explicit-any -- Required for contravariant tool handler compatibility
 }

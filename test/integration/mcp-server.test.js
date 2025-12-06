@@ -6,10 +6,53 @@ import { after, before, describe, it } from 'node:test';
 import { setTimeout } from 'node:timers/promises';
 
 /**
- * Helper function to send MCP initialize request
- * @param {import('node:child_process').ChildProcess} server
+ * Parse the first complete JSON line from a data buffer
+ * Handles cases where multiple JSON messages might be in a single chunk
+ * @param {Buffer} data - Raw data from stdout
+ * @returns {object} Parsed JSON object
  */
-async function initializeMcp(server) {
+function parseFirstJsonLine(data) {
+  const lines = data
+    .toString()
+    .split('\n')
+    .filter((line) => line.trim());
+  if (lines.length === 0) {
+    throw new Error('No JSON data received');
+  }
+  return JSON.parse(lines[0]);
+}
+
+/**
+ * Wait for a JSON response from the server with timeout
+ * @param {import('node:child_process').ChildProcess} server
+ * @param {number} timeoutMs
+ * @returns {Promise<object>}
+ */
+async function waitForResponse(server, timeoutMs = 5000) {
+  const [data] = await Promise.race([
+    once(server.stdout, 'data'),
+    setTimeout(timeoutMs).then(() => {
+      throw new Error(`Timeout waiting for response after ${timeoutMs}ms`);
+    }),
+  ]);
+  return parseFirstJsonLine(data);
+}
+
+/**
+ * Create and initialize an MCP test server
+ * @param {string} webhookUrl - Slack webhook URL for testing
+ * @returns {Promise<{server: import('node:child_process').ChildProcess, cleanup: () => Promise<void>}>}
+ */
+async function createMcpTestServer(webhookUrl) {
+  const server = spawn('node', ['dist/cli.js'], {
+    env: {
+      ...process.env,
+      SLACK_WEBHOOK_URL: webhookUrl,
+    },
+    stdio: ['pipe', 'pipe', 'pipe'],
+  });
+
+  // Send initialize request
   const initRequest = {
     jsonrpc: '2.0',
     method: 'initialize',
@@ -23,16 +66,27 @@ async function initializeMcp(server) {
 
   server.stdin.write(JSON.stringify(initRequest) + '\n');
 
-  const [data] = await Promise.race([
-    once(server.stdout, 'data'),
-    setTimeout(5000).then(() => {
-      throw new Error('Timeout waiting for initialize response');
-    }),
-  ]);
-
-  const response = JSON.parse(data.toString().trim());
+  const response = await waitForResponse(server);
   assert.strictEqual(response.id, 0);
   assert(response.result);
+
+  const cleanup = async () => {
+    server.kill();
+    await once(server, 'close');
+  };
+
+  return { server, cleanup };
+}
+
+/**
+ * Send an MCP request and wait for response
+ * @param {import('node:child_process').ChildProcess} server
+ * @param {object} request - JSON-RPC request object
+ * @returns {Promise<object>}
+ */
+async function sendRequest(server, request) {
+  server.stdin.write(JSON.stringify(request) + '\n');
+  return waitForResponse(server);
 }
 
 describe('MCP Server Integration Tests', () => {
@@ -71,36 +125,16 @@ describe('MCP Server Integration Tests', () => {
   });
 
   it('should list available tools', async () => {
-    const server = spawn('node', ['dist/cli.js'], {
-      env: {
-        ...process.env,
-        SLACK_WEBHOOK_URL: `http://127.0.0.1:${mockSlackPort}/webhook`,
-      },
-      stdio: ['pipe', 'pipe', 'pipe'],
-    });
+    const { server, cleanup } = await createMcpTestServer(
+      `http://127.0.0.1:${mockSlackPort}/webhook`,
+    );
 
     try {
-      // Initialize MCP connection first
-      await initializeMcp(server);
-
-      // Send list tools request
-      const request = {
+      const response = await sendRequest(server, {
         jsonrpc: '2.0',
         method: 'tools/list',
         id: 1,
-      };
-
-      server.stdin.write(JSON.stringify(request) + '\n');
-
-      // Wait for response
-      const [data] = await Promise.race([
-        once(server.stdout, 'data'),
-        setTimeout(5000).then(() => {
-          throw new Error('Timeout waiting for response');
-        }),
-      ]);
-
-      const response = JSON.parse(data.toString().trim());
+      });
 
       assert.strictEqual(response.jsonrpc, '2.0');
       assert.strictEqual(response.id, 1);
@@ -109,28 +143,19 @@ describe('MCP Server Integration Tests', () => {
       assert.strictEqual(response.result.tools.length, 1);
       assert.strictEqual(response.result.tools[0].name, 'send_to_slack');
     } finally {
-      server.kill();
-      await once(server, 'close');
+      await cleanup();
     }
   });
 
   it('should send message to Slack successfully', async () => {
     receivedRequests = []; // Clear previous requests
 
-    const server = spawn('node', ['dist/cli.js'], {
-      env: {
-        ...process.env,
-        SLACK_WEBHOOK_URL: `http://127.0.0.1:${mockSlackPort}/webhook`,
-      },
-      stdio: ['pipe', 'pipe', 'pipe'],
-    });
+    const { server, cleanup } = await createMcpTestServer(
+      `http://127.0.0.1:${mockSlackPort}/webhook`,
+    );
 
     try {
-      // Initialize MCP connection first
-      await initializeMcp(server);
-
-      // Send tool call request
-      const request = {
+      const response = await sendRequest(server, {
         jsonrpc: '2.0',
         method: 'tools/call',
         params: {
@@ -140,19 +165,7 @@ describe('MCP Server Integration Tests', () => {
           },
         },
         id: 2,
-      };
-
-      server.stdin.write(JSON.stringify(request) + '\n');
-
-      // Wait for response
-      const [data] = await Promise.race([
-        once(server.stdout, 'data'),
-        setTimeout(5000).then(() => {
-          throw new Error('Timeout waiting for response');
-        }),
-      ]);
-
-      const response = JSON.parse(data.toString().trim());
+      });
 
       // Verify MCP response
       assert.strictEqual(response.jsonrpc, '2.0');
@@ -179,26 +192,17 @@ describe('MCP Server Integration Tests', () => {
       const slackBody = JSON.parse(slackRequest.body);
       assert.strictEqual(slackBody.text, 'Integration test message');
     } finally {
-      server.kill();
-      await once(server, 'close');
+      await cleanup();
     }
   });
 
   it('should handle invalid tool name', async () => {
-    const server = spawn('node', ['dist/cli.js'], {
-      env: {
-        ...process.env,
-        SLACK_WEBHOOK_URL: `http://127.0.0.1:${mockSlackPort}/webhook`,
-      },
-      stdio: ['pipe', 'pipe', 'pipe'],
-    });
+    const { server, cleanup } = await createMcpTestServer(
+      `http://127.0.0.1:${mockSlackPort}/webhook`,
+    );
 
     try {
-      // Initialize MCP connection first
-      await initializeMcp(server);
-
-      // Send invalid tool call
-      const request = {
+      const response = await sendRequest(server, {
         jsonrpc: '2.0',
         method: 'tools/call',
         params: {
@@ -206,19 +210,7 @@ describe('MCP Server Integration Tests', () => {
           arguments: {},
         },
         id: 3,
-      };
-
-      server.stdin.write(JSON.stringify(request) + '\n');
-
-      // Wait for response
-      const [data] = await Promise.race([
-        once(server.stdout, 'data'),
-        setTimeout(5000).then(() => {
-          throw new Error('Timeout waiting for response');
-        }),
-      ]);
-
-      const response = JSON.parse(data.toString().trim());
+      });
 
       assert.strictEqual(response.jsonrpc, '2.0');
       assert.strictEqual(response.id, 3);
@@ -226,8 +218,7 @@ describe('MCP Server Integration Tests', () => {
       assert.strictEqual(response.result.isError, true);
       assert(response.result.content[0].text.includes('Unknown tool'));
     } finally {
-      server.kill();
-      await once(server, 'close');
+      await cleanup();
     }
   });
 
@@ -244,19 +235,12 @@ describe('MCP Server Integration Tests', () => {
 
     const errorPort = errorServer.address().port;
 
-    const server = spawn('node', ['dist/cli.js'], {
-      env: {
-        ...process.env,
-        SLACK_WEBHOOK_URL: `http://127.0.0.1:${errorPort}/webhook`,
-      },
-      stdio: ['pipe', 'pipe', 'pipe'],
-    });
+    const { server, cleanup } = await createMcpTestServer(
+      `http://127.0.0.1:${errorPort}/webhook`,
+    );
 
     try {
-      // Initialize MCP connection first
-      await initializeMcp(server);
-
-      const request = {
+      const response = await sendRequest(server, {
         jsonrpc: '2.0',
         method: 'tools/call',
         params: {
@@ -266,18 +250,7 @@ describe('MCP Server Integration Tests', () => {
           },
         },
         id: 4,
-      };
-
-      server.stdin.write(JSON.stringify(request) + '\n');
-
-      const [data] = await Promise.race([
-        once(server.stdout, 'data'),
-        setTimeout(5000).then(() => {
-          throw new Error('Timeout waiting for response');
-        }),
-      ]);
-
-      const response = JSON.parse(data.toString().trim());
+      });
 
       assert.strictEqual(response.jsonrpc, '2.0');
       assert.strictEqual(response.id, 4);
@@ -289,8 +262,7 @@ describe('MCP Server Integration Tests', () => {
         ),
       );
     } finally {
-      server.kill();
-      await once(server, 'close');
+      await cleanup();
       errorServer.close();
     }
   });
