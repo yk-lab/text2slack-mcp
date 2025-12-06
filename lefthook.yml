@@ -30,4 +30,4 @@ commit-msg:
     commitlint:
       run: pnpm commitlint --edit {1}
     spell-check:
-      run: pnpm cspell --no-summary {1}
+      run: pnpm cspell --config cspell.json --no-summary {1}

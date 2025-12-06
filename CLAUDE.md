@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-最終更新: 2025-12-06
+最終更新: 2025-12-06 (TypeScript 移行)
 
 ## 最重要ルール
 
@@ -68,10 +68,13 @@ It's implemented as a Node.js application using the MCP SDK v1.0.0.
 # Install dependencies (pnpm is configured as package manager)
 pnpm install
 
-# Start the MCP server
-pnpm start
+# Build TypeScript
+pnpm build            # Compile TypeScript to dist/
 
-# Run tests
+# Start the MCP server
+pnpm start            # Runs compiled code from dist/
+
+# Run tests (automatically builds before testing)
 pnpm test              # All tests
 pnpm test:unit        # Unit tests only
 pnpm test:integration # Integration tests only
@@ -80,6 +83,7 @@ pnpm test:coverage    # With coverage report
 # Code quality
 pnpm lint             # Lint check
 pnpm lint:fix         # Auto-fix lint issues
+pnpm typecheck        # TypeScript type checking only
 
 # Run as global CLI tool (after npm publish)
 npx text2slack-mcp
@@ -87,19 +91,24 @@ npx text2slack-mcp
 
 ## Architecture
 
-モジュール化されたアーキテクチャ:
+モジュール化されたアーキテクチャ（TypeScript）:
 
 ```plain
 src/
-├── services/slack-client.js  # Slack通信ロジック
-├── tools/send-to-slack.js    # MCPツール定義
-└── server/mcp-server.js      # MCPサーバー実装
+├── services/slack-client.ts  # Slack通信ロジック
+├── tools/send-to-slack.ts    # MCPツール定義
+└── server/mcp-server.ts      # MCPサーバー実装
 
-cli.js                        # エントリーポイント（依存性注入）
+cli.ts                        # エントリーポイント（依存性注入）
+
+dist/                         # コンパイル後のJSファイル（自動生成）
+├── src/
+└── cli.js
 ```
 
 特徴:
 
+- **TypeScript** による型安全な開発
 - 依存性注入パターンによるテスタビリティの向上
 - 関心の分離による保守性の向上
 - 100%のテストカバレッジ
@@ -120,11 +129,12 @@ For MCP client usage (e.g., Claude Desktop), the webhook URL is passed via the c
 
 ## Key Technical Details
 
+- **TypeScript**: 型安全な開発環境
 - Uses ES modules (type: "module" in package.json)
-- Package manager: pnpm (v10.12.3)
-- No TypeScript, build process, or bundling required
+- Package manager: pnpm (v10.14.0)
+- ビルドプロセス: `tsc` で TypeScript をコンパイル
 - No authentication beyond Slack webhook security
-- Dependencies: @modelcontextprotocol/sdk (v1.0.0), dotenv
+- Dependencies: @modelcontextprotocol/sdk (v1.24.3), dotenv
 - MCP SDK API: Uses Server class with schema-based request handlers
 
 ## MCP Tool
@@ -155,7 +165,8 @@ text2slack-mcp/
 │   ├── workflows/            # GitHub Actions
 │   ├── ISSUE_TEMPLATE/       # Issueテンプレート
 │   └── SECURITY.md           # セキュリティポリシー
-├── cli.js                     # エントリーポイント
+├── cli.ts                     # エントリーポイント
+├── tsconfig.json             # TypeScript設定
 ├── package.json              # プロジェクト設定
 ├── README.md                 # 日本語ドキュメント
 ├── README.en.md              # 英語ドキュメント
@@ -165,6 +176,13 @@ text2slack-mcp/
 ```
 
 ## Recent Updates
+
+### 2025-12-06: TypeScript 移行
+
+- 全ソースコードを TypeScript に移行
+- 型安全性の向上とコード品質の改善
+- MCP SDK の型定義を活用
+- ビルドプロセスの導入（`pnpm build`）
 
 ### 2025-12-06: リリース自動化の導入
 
@@ -280,8 +298,9 @@ fix!: change webhook URL environment variable name
 
 ## コーディング規約
 
-- ESLint ルールに従う（`pnpm lint` でチェック）
+- Biome によるリント・フォーマット（`pnpm lint` でチェック）
 - インデント: スペース2つ
 - 文字列: シングルクォート
 - セミコロン: 必須
 - 改行コード: LF
+- TypeScript: strict モードを使用

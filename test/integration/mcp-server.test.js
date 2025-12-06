@@ -41,7 +41,7 @@ describe('MCP Server Integration Tests', () => {
   });
 
   it('should list available tools', async () => {
-    const server = spawn('node', ['cli.js'], {
+    const server = spawn('node', ['dist/cli.js'], {
       env: {
         ...process.env,
         SLACK_WEBHOOK_URL: `http://127.0.0.1:${mockSlackPort}/webhook`,
@@ -84,7 +84,7 @@ describe('MCP Server Integration Tests', () => {
   it('should send message to Slack successfully', async () => {
     receivedRequests = []; // Clear previous requests
 
-    const server = spawn('node', ['cli.js'], {
+    const server = spawn('node', ['dist/cli.js'], {
       env: {
         ...process.env,
         SLACK_WEBHOOK_URL: `http://127.0.0.1:${mockSlackPort}/webhook`,
@@ -152,7 +152,7 @@ describe('MCP Server Integration Tests', () => {
   });
 
   it('should handle invalid tool name', async () => {
-    const server = spawn('node', ['cli.js'], {
+    const server = spawn('node', ['dist/cli.js'], {
       env: {
         ...process.env,
         SLACK_WEBHOOK_URL: `http://127.0.0.1:${mockSlackPort}/webhook`,
@@ -208,7 +208,7 @@ describe('MCP Server Integration Tests', () => {
 
     const errorPort = errorServer.address().port;
 
-    const server = spawn('node', ['cli.js'], {
+    const server = spawn('node', ['dist/cli.js'], {
       env: {
         ...process.env,
         SLACK_WEBHOOK_URL: `http://127.0.0.1:${errorPort}/webhook`,

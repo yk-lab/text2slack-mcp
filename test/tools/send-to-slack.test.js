@@ -1,6 +1,6 @@
 import assert from 'node:assert';
 import { beforeEach, describe, it, mock } from 'node:test';
-import { sendToSlackTool } from '../../src/tools/send-to-slack.js';
+import { sendToSlackTool } from '../../dist/src/tools/send-to-slack.js';
 
 describe('sendToSlackTool', () => {
   let mockSlackClient;

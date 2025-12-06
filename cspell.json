@@ -1,0 +1,18 @@
+{
+  "$schema": "https://raw.githubusercontent.com/streetsidesoftware/cspell/main/cspell.schema.json",
+  "version": "0.2",
+  "language": "en",
+  "words": [
+    "aikidosec",
+    "cli",
+    "codecov",
+    "commitlint",
+    "modelcontextprotocol",
+    "npmjs",
+    "pnpx",
+    "tsconfig",
+    "webhook",
+    "webhooks"
+  ],
+  "ignorePaths": ["node_modules", "dist", "pnpm-lock.yaml"]
+}
