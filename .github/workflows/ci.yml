@@ -40,30 +40,30 @@ jobs:
         run: pnpm lint
 
       - name: Run tests with coverage
-        if: matrix.node-version == '24.x'
+        if: matrix.node-version == '22.x'
         run: pnpm test:coverage
         timeout-minutes: 5
 
       - name: Run tests
-        if: matrix.node-version != '24.x'
+        if: matrix.node-version != '22.x'
         run: pnpm test
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v5
-        if: ${{ !cancelled() && matrix.node-version == '24.x' }}
+        if: ${{ !cancelled() && matrix.node-version == '22.x' }}
         with:
           use_oidc: true
           files: ./lcov.info
 
       - name: Upload test results to Codecov
-        if: ${{ !cancelled() && matrix.node-version == '24.x' }}
+        if: ${{ !cancelled() && matrix.node-version == '22.x' }}
         uses: codecov/test-results-action@v1
         with:
           use_oidc: true
           files: ./junit.xml
 
       - name: Upload coverage to Qlty
-        if: ${{ !cancelled() && matrix.node-version == '24.x' }}
+        if: ${{ !cancelled() && matrix.node-version == '22.x' }}
         uses: qltysh/qlty-action/coverage@main
         with:
           oidc: true
