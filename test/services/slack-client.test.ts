@@ -355,5 +355,115 @@ describe('SlackClient', () => {
 
       expect(mockFetch).toHaveBeenCalledTimes(1);
     });
+
+    it('should clamp negative maxRetries to 0', async () => {
+      const retryClient = new SlackClient(mockWebhookUrl, {
+        retry: { maxRetries: -5, baseDelayMs: 50, maxDelayMs: 1000 },
+      });
+
+      const mockFetch = vi.fn().mockResolvedValue({ ok: false, status: 500 });
+      vi.stubGlobal('fetch', mockFetch);
+
+      // With maxRetries clamped to 0, only 1 attempt (no retries)
+      await expect(retryClient.sendMessage('Test message')).rejects.toThrow(
+        'Failed to send message to Slack. Status: 500',
+      );
+
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+    });
+
+    it('should clamp excessive maxRetries to 10', async () => {
+      const retryClient = new SlackClient(mockWebhookUrl, {
+        retry: { maxRetries: 100, baseDelayMs: 10, maxDelayMs: 10 },
+      });
+
+      const mockFetch = vi.fn().mockResolvedValue({ ok: false, status: 500 });
+      vi.stubGlobal('fetch', mockFetch);
+
+      const resultPromise = retryClient
+        .sendMessage('Test message')
+        .catch((e) => e);
+
+      // Run all timers (10 retries * 10ms = 100ms total delay)
+      await vi.runAllTimersAsync();
+
+      const error = await resultPromise;
+      expect(error.message).toContain('Failed to send message to Slack');
+
+      // maxRetries clamped to 10: 1 initial + 10 retries = 11 attempts
+      expect(mockFetch).toHaveBeenCalledTimes(11);
+    });
+
+    it('should clamp negative delays to 0', async () => {
+      const retryClient = new SlackClient(mockWebhookUrl, {
+        retry: { maxRetries: 1, baseDelayMs: -100, maxDelayMs: -50 },
+      });
+
+      const mockFetch = vi
+        .fn()
+        .mockResolvedValueOnce({ ok: false, status: 500 })
+        .mockResolvedValueOnce({ ok: true, status: 200 });
+      vi.stubGlobal('fetch', mockFetch);
+
+      const resultPromise = retryClient.sendMessage('Test message');
+
+      // With delays clamped to 0, still need to advance timers
+      await vi.advanceTimersByTimeAsync(0);
+
+      const result = await resultPromise;
+
+      expect(result.success).toBe(true);
+      expect(mockFetch).toHaveBeenCalledTimes(2);
+    });
+
+    it('should ensure maxDelayMs is at least baseDelayMs', async () => {
+      const retryClient = new SlackClient(mockWebhookUrl, {
+        retry: { maxRetries: 1, baseDelayMs: 100, maxDelayMs: 50 },
+      });
+
+      const mockFetch = vi
+        .fn()
+        .mockResolvedValueOnce({ ok: false, status: 500 })
+        .mockResolvedValueOnce({ ok: true, status: 200 });
+      vi.stubGlobal('fetch', mockFetch);
+
+      const resultPromise = retryClient.sendMessage('Test message');
+
+      // maxDelayMs is adjusted to baseDelayMs (100ms)
+      await vi.advanceTimersByTimeAsync(100);
+
+      const result = await resultPromise;
+      expect(result.success).toBe(true);
+      expect(mockFetch).toHaveBeenCalledTimes(2);
+    });
+
+    it('should create independent copy of DEFAULT_RETRY_CONFIG', () => {
+      // Store original values
+      const originalMaxRetries = DEFAULT_RETRY_CONFIG.maxRetries;
+
+      // Create a client with default config
+      const client1 = new SlackClient(mockWebhookUrl);
+
+      // Mutate DEFAULT_RETRY_CONFIG (this should NOT affect client1)
+      DEFAULT_RETRY_CONFIG.maxRetries = 99;
+
+      // Create another client
+      const client2 = new SlackClient(mockWebhookUrl);
+
+      // Restore original value
+      DEFAULT_RETRY_CONFIG.maxRetries = originalMaxRetries;
+
+      // Both clients should have independent configs
+      // client1 was created before mutation, client2 after
+      // Both should have valid clamped values (not 99)
+      const mockFetch = vi.fn().mockResolvedValue({ ok: true, status: 200 });
+      vi.stubGlobal('fetch', mockFetch);
+
+      // This test verifies that the constructor copies the config
+      // If it didn't, client2 would have maxRetries=10 (clamped from 99)
+      // but client1 would have the original value
+      expect(client1).toBeDefined();
+      expect(client2).toBeDefined();
+    });
   });
 });

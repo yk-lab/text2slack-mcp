@@ -102,7 +102,36 @@ export class SlackClient {
     }
     this.webhookUrl = webhookUrl;
     this.timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
-    this.retryConfig = options.retry ?? DEFAULT_RETRY_CONFIG;
+    this.retryConfig = this.normalizeRetryConfig(options.retry);
+  }
+
+  /**
+   * Normalizes and validates retry configuration.
+   *
+   * - If retry is false, returns false (retries disabled)
+   * - If retry is undefined, returns a copy of DEFAULT_RETRY_CONFIG
+   * - Otherwise, clamps values to safe ranges to prevent misconfiguration
+   *
+   * @param retry - The retry configuration from options
+   * @returns Normalized retry configuration or false
+   */
+  private normalizeRetryConfig(
+    retry: RetryConfig | false | undefined,
+  ): RetryConfig | false {
+    if (retry === false) {
+      return false;
+    }
+
+    const config = retry ?? { ...DEFAULT_RETRY_CONFIG };
+
+    // Clamp maxRetries to [0, 10] to prevent excessive retries
+    const maxRetries = Math.max(0, Math.min(10, config.maxRetries));
+
+    // Ensure delays are positive and maxDelayMs >= baseDelayMs
+    const baseDelayMs = Math.max(0, config.baseDelayMs);
+    const maxDelayMs = Math.max(baseDelayMs, config.maxDelayMs);
+
+    return { maxRetries, baseDelayMs, maxDelayMs };
   }
 
   /**
