@@ -130,6 +130,9 @@ export class SlackClient {
     }
 
     // Timeout errors are retryable (standard AbortError from AbortController)
+    // Note: Currently unreachable because doSendMessage wraps AbortError with a custom message,
+    // but kept for robustness in case the wrapping behavior changes
+    /* v8 ignore next 3 */
     if (error.name === 'AbortError') {
       return true;
     }
@@ -231,6 +234,7 @@ export class SlackClient {
     }
 
     // This should never be reached, but TypeScript needs it
+    /* v8 ignore next */
     throw lastError ?? new Error('Unknown error');
   }
 
