@@ -17,15 +17,18 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
+      - name: Install typos
+        uses: taiki-e/install-action@typos
+
       - name: Run spell check
         id: typos
         continue-on-error: true
         run: |
-          npx typos --format json > typos-output.json 2>&1 || true
+          typos --format json > typos-output.json 2>&1 || true
           if [ -s typos-output.json ] && [ "$(cat typos-output.json)" != "" ]; then
             echo "has_errors=true" >> $GITHUB_OUTPUT
             echo "## Typos Found" >> $GITHUB_STEP_SUMMARY
-            npx typos || true
+            typos || true
           else
             echo "has_errors=false" >> $GITHUB_OUTPUT
             echo "## No Typos Found ✅" >> $GITHUB_STEP_SUMMARY
