@@ -9,4 +9,3 @@ junit.xml
 .idea/
 docs/dev_diary/
 !docs/.gitkeep
-.cspellcache
