@@ -20,10 +20,9 @@ pre-commit:
       skip:
         - merge
         - rebase
-    cspell:
+    typos:
       glob: "*.{tsx,ts,mts,mcs,mjs,cjs,js,json,md,yml,yaml}"
-      exclude: cspell.json
-      run: pnpm cspell lint --config cspell.json --gitignore --cache {staged_files}
+      run: npx typos {staged_files}
 
 commit-msg:
   parallel: true
@@ -31,4 +30,4 @@ commit-msg:
     commitlint:
       run: pnpm commitlint --edit {1}
     spell-check:
-      run: pnpm cspell --config cspell.json --no-summary {1}
+      run: npx typos {1}

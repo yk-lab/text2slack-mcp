@@ -1,0 +1,85 @@
+name: Spell Check
+
+on:
+  schedule:
+    # Run every Monday at 9:00 AM JST (0:00 UTC)
+    - cron: 0 0 * * 1
+  workflow_dispatch:  # Allow manual trigger
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  spell-check:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Run spell check
+        id: typos
+        uses: crate-ci/typos@master
+        continue-on-error: true
+
+      - name: Set output
+        id: result
+        run: |
+          if [ "${{ steps.typos.outcome }}" == "failure" ]; then
+            echo "has_errors=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_errors=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Check for existing issue
+        if: steps.result.outputs.has_errors == true
+        id: check_issue
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          existing=$(gh issue list --label "spell-check" --state open --json number --jq '.[0].number // empty')
+          if [ -n "$existing" ]; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+            echo "issue_number=$existing" >> $GITHUB_OUTPUT
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create issue for typos
+        if: steps.result.outputs.has_errors == true && steps.check_issue.outputs.exists == false
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh issue create \
+            --title "chore: fix typos detected by spell check" \
+            --label "spell-check,chore" \
+            --body "$(cat <<'EOF'
+          ## 概要
+
+          定期スペルチェックでタイポが検出されました。
+
+          ## 検出されたタイポ
+
+          詳細は [workflow run](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}) を確認してください。
+
+          ## 対応方法
+
+          1. タイポを修正する
+          2. 誤検出の場合は `_typos.toml` に例外を追加する
+
+          ```toml
+          # _typos.toml
+          [default.extend-words]
+          # word = "word"  # 誤検出を無視
+          ```
+          EOF
+          )"
+
+      - name: Update existing issue
+        if: steps.result.outputs.has_errors == true && steps.check_issue.outputs.exists == true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          WORKFLOW_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          gh issue comment ${{ steps.check_issue.outputs.issue_number }} \
+            --body "定期チェックで引き続きタイポが検出されています。詳細: ${WORKFLOW_URL}"
