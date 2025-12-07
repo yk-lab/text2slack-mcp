@@ -37,6 +37,16 @@ export async function shutdownServer(server: McpServer): Promise<void> {
   }
 }
 
+let signalHandlersRegistered = false;
+
+/**
+ * Reset signal handlers registration state (for testing purposes only)
+ * @internal
+ */
+export function _resetSignalHandlersForTesting(): void {
+  signalHandlersRegistered = false;
+}
+
 /**
  * Setup signal handlers for graceful shutdown
  */
@@ -44,6 +54,11 @@ export function setupSignalHandlers(
   server: McpServer,
   onShutdown?: () => void,
 ): void {
+  if (signalHandlersRegistered) {
+    return;
+  }
+  signalHandlersRegistered = true;
+
   let isShuttingDown = false;
 
   const handleSignal = async (signal: string): Promise<void> => {

@@ -26,8 +26,13 @@ vi.mock('node:module', () => ({
 }));
 
 // Import after mocks are set up
-const { createMcpServer, setupSignalHandlers, shutdownServer, startServer } =
-  await import('../../src/server/mcp-server.js');
+const {
+  createMcpServer,
+  setupSignalHandlers,
+  shutdownServer,
+  startServer,
+  _resetSignalHandlersForTesting,
+} = await import('../../src/server/mcp-server.js');
 
 describe('mcp-server', () => {
   let consoleErrorSpy: ReturnType<typeof vi.spyOn>;
@@ -62,6 +67,9 @@ describe('mcp-server', () => {
     consoleErrorSpy.mockRestore();
     processExitSpy.mockRestore();
     processOnSpy.mockRestore();
+
+    // Reset signal handlers registration state for next test
+    _resetSignalHandlersForTesting();
 
     // Clean up signal handlers added during tests
     process.removeAllListeners('SIGINT');
@@ -140,6 +148,27 @@ describe('mcp-server', () => {
       );
     });
 
+    it('should not register handlers twice when called multiple times', () => {
+      const mockServer = {
+        close: vi.fn().mockResolvedValue(undefined),
+      } as unknown as McpServer;
+
+      setupSignalHandlers(mockServer);
+      setupSignalHandlers(mockServer);
+      setupSignalHandlers(mockServer);
+
+      // Should only register once
+      const sigintCalls = processOnSpy.mock.calls.filter(
+        (call: [string, unknown]) => call[0] === 'SIGINT',
+      );
+      const sigtermCalls = processOnSpy.mock.calls.filter(
+        (call: [string, unknown]) => call[0] === 'SIGTERM',
+      );
+
+      expect(sigintCalls).toHaveLength(1);
+      expect(sigtermCalls).toHaveLength(1);
+    });
+
     it('should handle SIGINT gracefully', async () => {
       const mockServer = {
         close: vi.fn().mockResolvedValue(undefined),
@@ -213,13 +242,12 @@ describe('mcp-server', () => {
     });
 
     it('should force exit on second signal during shutdown', async () => {
+      // Promise that never resolves to simulate long shutdown
+      const neverResolvingPromise = new Promise(() => {
+        // Intentionally never resolves
+      });
       const mockServer = {
-        close: vi.fn().mockImplementation(
-          () =>
-            new Promise(() => {
-              // Never resolves to simulate long shutdown
-            }),
-        ),
+        close: vi.fn().mockReturnValue(neverResolvingPromise),
       } as unknown as McpServer;
 
       setupSignalHandlers(mockServer);
