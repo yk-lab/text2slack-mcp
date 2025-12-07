@@ -8,7 +8,7 @@ export default defineConfig({
       reporter: ['text', 'lcov', 'json'],
       reportsDirectory: 'coverage',
       include: ['src/**/*.ts'],
-      exclude: ['src/types/**/*.ts', 'src/server/**/*.ts'],
+      exclude: ['src/types/**/*.ts'],
     },
     testTimeout: 10000,
     reporters: ['default', 'junit'],

@@ -23,8 +23,89 @@ export function createMcpServer(): McpServer {
   );
 }
 
+/**
+ * Gracefully shutdown the MCP server
+ */
+export async function shutdownServer(server: McpServer): Promise<void> {
+  console.error('Shutting down MCP server...');
+  try {
+    await server.close();
+    console.error('MCP server shut down successfully');
+  } catch (error) {
+    console.error('Error during server shutdown:', error);
+    throw error;
+  }
+}
+
+let signalHandlersRegistered = false;
+
+/**
+ * Reset signal handlers registration state (for testing purposes only)
+ * @internal
+ */
+export function _resetSignalHandlersForTesting(): void {
+  signalHandlersRegistered = false;
+}
+
+/**
+ * Setup signal handlers for graceful shutdown
+ */
+export function setupSignalHandlers(
+  server: McpServer,
+  onShutdown?: () => void,
+): void {
+  if (signalHandlersRegistered) {
+    return;
+  }
+  signalHandlersRegistered = true;
+
+  let isShuttingDown = false;
+
+  const handleSignal = async (signal: string): Promise<void> => {
+    if (isShuttingDown) {
+      console.error(`Received ${signal} during shutdown, forcing exit...`);
+      process.exit(1);
+    }
+
+    isShuttingDown = true;
+    console.error(`Received ${signal}, initiating graceful shutdown...`);
+
+    try {
+      await shutdownServer(server);
+      onShutdown?.();
+      process.exit(0);
+    } catch {
+      console.error('Failed to shutdown gracefully');
+      process.exit(1);
+    }
+  };
+
+  process.on('SIGINT', () => {
+    void handleSignal('SIGINT');
+  });
+  process.on('SIGTERM', () => {
+    void handleSignal('SIGTERM');
+  });
+}
+
+/**
+ * Start the MCP server with signal handling and error recovery
+ */
 export async function startServer(server: McpServer): Promise<void> {
-  const transport = new StdioServerTransport();
-  await server.connect(transport);
-  console.error('text2slack-mcp server running on stdio');
+  // Setup signal handlers before starting
+  setupSignalHandlers(server);
+
+  try {
+    const transport = new StdioServerTransport();
+    await server.connect(transport);
+    console.error('text2slack-mcp server running on stdio');
+  } catch (error) {
+    console.error('Failed to start MCP server:', error);
+    try {
+      await shutdownServer(server);
+    } catch {
+      // Ignore shutdown errors during startup failure
+    }
+    throw error;
+  }
 }
