@@ -16,6 +16,7 @@
     "prestart",
     "pretest",
     "qltysh",
+    "retryable",
     "tsconfig",
     "unstub",
     "vitest",
