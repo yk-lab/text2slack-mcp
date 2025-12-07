@@ -17,25 +17,22 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      - name: Install typos
-        uses: taiki-e/install-action@typos
-
       - name: Run spell check
         id: typos
+        uses: crate-ci/typos@master
         continue-on-error: true
+
+      - name: Set output
+        id: result
         run: |
-          typos --format json > typos-output.json 2>&1 || true
-          if [ -s typos-output.json ] && [ "$(cat typos-output.json)" != "" ]; then
+          if [ "${{ steps.typos.outcome }}" == "failure" ]; then
             echo "has_errors=true" >> $GITHUB_OUTPUT
-            echo "## Typos Found" >> $GITHUB_STEP_SUMMARY
-            typos || true
           else
             echo "has_errors=false" >> $GITHUB_OUTPUT
-            echo "## No Typos Found ✅" >> $GITHUB_STEP_SUMMARY
           fi
 
       - name: Check for existing issue
-        if: steps.typos.outputs.has_errors == 'true'
+        if: steps.result.outputs.has_errors == 'true'
         id: check_issue
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -49,7 +46,7 @@ jobs:
           fi
 
       - name: Create issue for typos
-        if: steps.typos.outputs.has_errors == 'true' && steps.check_issue.outputs.exists == 'false'
+        if: steps.result.outputs.has_errors == 'true' && steps.check_issue.outputs.exists == 'false'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -79,7 +76,7 @@ jobs:
           )"
 
       - name: Update existing issue
-        if: steps.typos.outputs.has_errors == 'true' && steps.check_issue.outputs.exists == 'true'
+        if: steps.result.outputs.has_errors == 'true' && steps.check_issue.outputs.exists == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |

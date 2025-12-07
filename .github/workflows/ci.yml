@@ -39,13 +39,9 @@ jobs:
       - name: Run lint
         run: pnpm lint
 
-      - name: Install typos
-        if: matrix.node-version == '22.x'
-        uses: taiki-e/install-action@typos
-
       - name: Run spell check
         if: matrix.node-version == '22.x'
-        run: typos
+        uses: crate-ci/typos@master
 
       - name: Build
         run: pnpm build
