@@ -110,7 +110,7 @@ export class SlackClient {
    *
    * Retryable errors include:
    * - Network errors (fetch failures)
-   * - Timeout errors (AbortError)
+   * - Timeout errors (wrapped by doSendMessage with "timed out" message)
    * - Server errors (5xx status codes)
    *
    * @remarks
@@ -129,14 +129,6 @@ export class SlackClient {
       return false;
     }
 
-    // Timeout errors are retryable (standard AbortError from AbortController)
-    // Note: Currently unreachable because doSendMessage wraps AbortError with a custom message,
-    // but kept for robustness in case the wrapping behavior changes
-    /* v8 ignore next 3 */
-    if (error.name === 'AbortError') {
-      return true;
-    }
-
     // Network errors (fetch failures) are retryable
     // Note: TypeError with 'fetch' in message is the standard pattern for network failures
     if (error.name === 'TypeError' && error.message.includes('fetch')) {
@@ -149,8 +141,8 @@ export class SlackClient {
       return true;
     }
 
-    // Timeout message from our wrapper in doSendMessage
-    // Matches: "Request to Slack timed out after Xms"
+    // Timeout errors are retryable
+    // Matches: "Request to Slack timed out after Xms" (from doSendMessage wrapper)
     if (error.message.includes('timed out')) {
       return true;
     }
@@ -209,22 +201,22 @@ export class SlackClient {
     // Member properties are not narrowed through conditionals
     const retryConfig = this.retryConfig;
     const maxAttempts = retryConfig === false ? 1 : retryConfig.maxRetries + 1;
-    let lastError: Error | null = null;
 
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
       try {
         return await this.doSendMessage(message);
       } catch (error) {
-        lastError = error instanceof Error ? error : new Error(String(error));
+        const wrappedError =
+          error instanceof Error ? error : new Error(String(error));
 
         // Don't retry if retries are disabled or error is not retryable
         if (retryConfig === false || !this.isRetryableError(error)) {
-          throw lastError;
+          throw wrappedError;
         }
 
-        // Don't retry if this was the last attempt
+        // Throw on last attempt (no more retries)
         if (attempt === maxAttempts - 1) {
-          throw lastError;
+          throw wrappedError;
         }
 
         // Wait before next retry with exponential backoff
@@ -233,9 +225,13 @@ export class SlackClient {
       }
     }
 
-    // This should never be reached, but TypeScript needs it
-    /* v8 ignore next */
-    throw lastError ?? new Error('Unknown error');
+    /* v8 ignore next -- @preserve */
+    // TypeScript requires a return/throw after the loop.
+    // This is unreachable because:
+    // - If doSendMessage succeeds, we return
+    // - If it fails on the last attempt, we throw
+    // - If retries are disabled or error is not retryable, we throw
+    throw new Error('Unexpected: retry loop completed without result');
   }
 
   /**
