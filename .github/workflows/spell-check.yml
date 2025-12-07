@@ -3,8 +3,8 @@ name: Spell Check
 on:
   schedule:
     # Run every Monday at 9:00 AM JST (0:00 UTC)
-    - cron: '0 0 * * 1'
-  workflow_dispatch: # Allow manual trigger
+    - cron: 0 0 * * 1
+  workflow_dispatch:  # Allow manual trigger
 
 permissions:
   contents: read
@@ -32,7 +32,7 @@ jobs:
           fi
 
       - name: Check for existing issue
-        if: steps.result.outputs.has_errors == 'true'
+        if: steps.result.outputs.has_errors == true
         id: check_issue
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -46,7 +46,7 @@ jobs:
           fi
 
       - name: Create issue for typos
-        if: steps.result.outputs.has_errors == 'true' && steps.check_issue.outputs.exists == 'false'
+        if: steps.result.outputs.has_errors == true && steps.check_issue.outputs.exists == false
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -76,9 +76,10 @@ jobs:
           )"
 
       - name: Update existing issue
-        if: steps.result.outputs.has_errors == 'true' && steps.check_issue.outputs.exists == 'true'
+        if: steps.result.outputs.has_errors == true && steps.check_issue.outputs.exists == true
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          WORKFLOW_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
           gh issue comment ${{ steps.check_issue.outputs.issue_number }} \
-            --body "定期チェックで引き続きタイポが検出されています。詳細: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            --body "定期チェックで引き続きタイポが検出されています。詳細: ${WORKFLOW_URL}"
