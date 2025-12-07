@@ -23,6 +23,11 @@ describe('SlackClient', () => {
     it('should create instance with valid webhook URL', () => {
       expect(client).toBeDefined();
     });
+
+    it('should accept custom timeout option', () => {
+      const customClient = new SlackClient(mockWebhookUrl, { timeoutMs: 5000 });
+      expect(customClient).toBeDefined();
+    });
   });
 
   describe('sendMessage', () => {
@@ -67,6 +72,45 @@ describe('SlackClient', () => {
 
       await expect(client.sendMessage('Test message')).rejects.toThrow(
         'Failed to send message to Slack. Status: 404',
+      );
+    });
+
+    it('should include AbortSignal in fetch call', async () => {
+      const mockFetch = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+      });
+      vi.stubGlobal('fetch', mockFetch);
+
+      await client.sendMessage('Test message');
+
+      const [, options] = mockFetch.mock.calls[0];
+      expect(options.signal).toBeInstanceOf(AbortSignal);
+    });
+
+    it('should throw timeout error when request times out', async () => {
+      const clientWithShortTimeout = new SlackClient(mockWebhookUrl, {
+        timeoutMs: 10,
+      });
+
+      const abortError = new Error('The operation was aborted');
+      abortError.name = 'AbortError';
+
+      const mockFetch = vi.fn().mockRejectedValue(abortError);
+      vi.stubGlobal('fetch', mockFetch);
+
+      await expect(
+        clientWithShortTimeout.sendMessage('Test message'),
+      ).rejects.toThrow('Request to Slack timed out after 10ms');
+    });
+
+    it('should rethrow non-abort errors', async () => {
+      const networkError = new Error('Network failure');
+      const mockFetch = vi.fn().mockRejectedValue(networkError);
+      vi.stubGlobal('fetch', mockFetch);
+
+      await expect(client.sendMessage('Test message')).rejects.toThrow(
+        'Network failure',
       );
     });
   });
