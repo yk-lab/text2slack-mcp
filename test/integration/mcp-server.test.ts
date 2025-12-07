@@ -3,8 +3,12 @@ import { spawn } from 'node:child_process';
 import { once } from 'node:events';
 import type { IncomingMessage, Server, ServerResponse } from 'node:http';
 import { createServer } from 'node:http';
+import { createRequire } from 'node:module';
 import { setTimeout } from 'node:timers/promises';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+
+const require = createRequire(import.meta.url);
+const pkg = require('../../package.json') as { name: string; version: string };
 
 interface JsonRpcResponse {
   jsonrpc: string;
@@ -13,6 +17,7 @@ interface JsonRpcResponse {
     tools?: Array<{ name: string }>;
     content?: Array<{ type: string; text: string }>;
     isError?: boolean;
+    serverInfo?: { name: string; version: string };
   };
 }
 
@@ -57,9 +62,11 @@ async function waitForResponse(
 /**
  * Create and initialize an MCP test server
  */
-async function createMcpTestServer(
-  webhookUrl: string,
-): Promise<{ server: ChildProcess; cleanup: () => Promise<void> }> {
+async function createMcpTestServer(webhookUrl: string): Promise<{
+  server: ChildProcess;
+  cleanup: () => Promise<void>;
+  initResponse: JsonRpcResponse;
+}> {
   const server = spawn('node', ['dist/cli.js'], {
     env: {
       ...process.env,
@@ -82,16 +89,16 @@ async function createMcpTestServer(
 
   server.stdin!.write(JSON.stringify(initRequest) + '\n');
 
-  const response = await waitForResponse(server);
-  expect(response.id).toBe(0);
-  expect(response.result).toBeDefined();
+  const initResponse = await waitForResponse(server);
+  expect(initResponse.id).toBe(0);
+  expect(initResponse.result).toBeDefined();
 
   const cleanup = async () => {
     server.kill();
     await once(server, 'close');
   };
 
-  return { server, cleanup };
+  return { server, cleanup, initResponse };
 }
 
 /**
@@ -147,6 +154,20 @@ describe('MCP Server Integration Tests', () => {
 
   beforeEach(() => {
     receivedRequests = [];
+  });
+
+  it('should return correct server info with version from package.json', async () => {
+    const { cleanup, initResponse } = await createMcpTestServer(
+      `http://127.0.0.1:${mockSlackPort}/webhook`,
+    );
+
+    try {
+      expect(initResponse.result?.serverInfo).toBeDefined();
+      expect(initResponse.result?.serverInfo?.name).toBe(pkg.name);
+      expect(initResponse.result?.serverInfo?.version).toBe(pkg.version);
+    } finally {
+      await cleanup();
+    }
   });
 
   it('should list available tools', async () => {
