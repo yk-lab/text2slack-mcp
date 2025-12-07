@@ -1,12 +1,6 @@
 import { createRequire } from 'node:module';
-import { Server } from '@modelcontextprotocol/sdk/server/index.js';
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import {
-  CallToolRequestSchema,
-  type CallToolResult,
-  ListToolsRequestSchema,
-} from '@modelcontextprotocol/sdk/types.js';
-import type { Tool, ToolHandler } from '../types/index.js';
 
 const require = createRequire(import.meta.url);
 // Path is relative to dist/src/server/mcp-server.js after compilation
@@ -15,73 +9,22 @@ const pkg = require('../../../package.json') as {
   version: string;
 };
 
-export class MCPServer {
-  private readonly tools: Tool[];
-  private readonly toolHandlers: Map<string, ToolHandler>;
-  private readonly server: Server;
-
-  constructor(tools: Tool[] = []) {
-    this.tools = tools;
-    this.toolHandlers = new Map();
-
-    // Register tools
-    tools.forEach((tool) => {
-      this.toolHandlers.set(tool.definition.name, tool.handler);
-    });
-
-    // Create MCP server
-    this.server = new Server(
-      {
-        name: pkg.name,
-        version: pkg.version,
+export function createMcpServer(): McpServer {
+  return new McpServer(
+    {
+      name: pkg.name,
+      version: pkg.version,
+    },
+    {
+      capabilities: {
+        tools: {},
       },
-      {
-        capabilities: {
-          tools: {},
-        },
-      },
-    );
+    },
+  );
+}
 
-    this.setupHandlers();
-  }
-
-  private setupHandlers(): void {
-    // Register list tools handler
-    this.server.setRequestHandler(ListToolsRequestSchema, async () => ({
-      tools: this.tools.map((tool) => tool.definition),
-    }));
-
-    // Register call tool handler
-    this.server.setRequestHandler(
-      CallToolRequestSchema,
-      async (request): Promise<CallToolResult> => {
-        const { name, arguments: args } = request.params;
-
-        const handler = this.toolHandlers.get(name);
-        if (!handler) {
-          return {
-            content: [
-              {
-                type: 'text',
-                text: `Unknown tool: ${name}`,
-              },
-            ],
-            isError: true,
-          };
-        }
-
-        const result = await handler(args as Record<string, unknown>);
-        return {
-          content: result.content,
-          isError: result.isError,
-        };
-      },
-    );
-  }
-
-  async start(): Promise<void> {
-    const transport = new StdioServerTransport();
-    await this.server.connect(transport);
-    console.error('text2slack-mcp server running on stdio');
-  }
+export async function startServer(server: McpServer): Promise<void> {
+  const transport = new StdioServerTransport();
+  await server.connect(transport);
+  console.error('text2slack-mcp server running on stdio');
 }

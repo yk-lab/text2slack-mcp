@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 import 'dotenv/config';
-import { MCPServer } from './src/server/mcp-server.js';
+import { createMcpServer, startServer } from './src/server/mcp-server.js';
 import { SlackClient } from './src/services/slack-client.js';
-import { sendToSlackTool } from './src/tools/send-to-slack.js';
+import { registerSendToSlackTool } from './src/tools/send-to-slack.js';
 
 // Validate environment variable at startup
 const webhookUrl = process.env.SLACK_WEBHOOK_URL;
@@ -14,21 +14,12 @@ if (!webhookUrl) {
 // Initialize services
 const slackClient = new SlackClient(webhookUrl);
 
-// Configure tools with dependencies
-const tools = [
-  {
-    definition: sendToSlackTool.definition,
-    handler: sendToSlackTool.handler(slackClient),
-  },
-];
+// Create server and register tools
+const server = createMcpServer();
+registerSendToSlackTool(server, slackClient);
 
-// Create and start server
-async function main(): Promise<void> {
-  const server = new MCPServer(tools);
-  await server.start();
-}
-
-main().catch((error: unknown) => {
+// Start server
+startServer(server).catch((error: unknown) => {
   console.error('Server error:', error);
   process.exit(1);
 });

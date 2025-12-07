@@ -1,36 +1,30 @@
+import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { z } from 'zod/v3';
 import type { SlackClient } from '../services/slack-client.js';
-import type {
-  ToolDefinition,
-  ToolHandler,
-  ToolResponse,
-} from '../types/index.js';
 
 /**
- * Arguments for the send_to_slack tool
+ * Zod schema for the send_to_slack tool input
  */
-export interface SendToSlackArgs {
-  message: string;
-}
+const SendToSlackArgsSchema = z.object({
+  message: z.string().describe('The message to send to Slack'),
+});
 
-export const sendToSlackTool = {
-  definition: {
-    name: 'send_to_slack',
-    description: 'Send a text message to Slack',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        message: {
-          type: 'string',
-          description: 'The message to send to Slack',
-        },
-      },
-      required: ['message'],
+export type SendToSlackArgs = z.infer<typeof SendToSlackArgsSchema>;
+
+/**
+ * Register the send_to_slack tool with the MCP server
+ */
+export function registerSendToSlackTool(
+  server: McpServer,
+  slackClient: SlackClient,
+): void {
+  server.registerTool(
+    'send_to_slack',
+    {
+      description: 'Send a text message to Slack',
+      inputSchema: SendToSlackArgsSchema.shape,
     },
-  } as ToolDefinition,
-
-  handler:
-    (slackClient: SlackClient): ToolHandler<SendToSlackArgs> =>
-    async (args: SendToSlackArgs): Promise<ToolResponse> => {
+    async (args: SendToSlackArgs) => {
       const { message } = args;
 
       try {
@@ -56,4 +50,5 @@ export const sendToSlackTool = {
         };
       }
     },
-};
+  );
+}

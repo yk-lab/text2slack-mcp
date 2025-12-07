@@ -255,7 +255,7 @@ describe('MCP Server Integration Tests', () => {
       expect(response.id).toBe(3);
       expect(response.result).toBeDefined();
       expect(response.result?.isError).toBe(true);
-      expect(response.result?.content?.[0].text).toContain('Unknown tool');
+      expect(response.result?.content?.[0].text).toContain('not found');
     } finally {
       await cleanup();
     }
