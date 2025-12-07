@@ -1,32 +1,35 @@
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { SlackClient } from '../../src/services/slack-client.js';
-import type { SendToSlackArgs } from '../../src/tools/send-to-slack.js';
-import { sendToSlackTool } from '../../src/tools/send-to-slack.js';
-import type { ToolHandler } from '../../src/types/index.js';
+import { registerSendToSlackTool } from '../../src/tools/send-to-slack.js';
 
-describe('sendToSlackTool', () => {
+describe('registerSendToSlackTool', () => {
   let mockSlackClient: { sendMessage: ReturnType<typeof vi.fn> };
-  let handler: ToolHandler<SendToSlackArgs>;
+  let mockServer: { registerTool: ReturnType<typeof vi.fn> };
 
   beforeEach(() => {
     mockSlackClient = {
       sendMessage: vi.fn(),
     };
-    handler = sendToSlackTool.handler(
-      mockSlackClient as unknown as SlackClient,
-    );
+    mockServer = {
+      registerTool: vi.fn(),
+    };
   });
 
-  describe('definition', () => {
-    it('should have correct tool metadata', () => {
-      expect(sendToSlackTool.definition.name).toBe('send_to_slack');
-      expect(sendToSlackTool.definition.description).toBe(
-        'Send a text message to Slack',
+  describe('registration', () => {
+    it('should register tool with correct metadata', () => {
+      registerSendToSlackTool(
+        mockServer as unknown as McpServer,
+        mockSlackClient as unknown as SlackClient,
       );
-      expect(sendToSlackTool.definition.inputSchema.type).toBe('object');
-      expect(sendToSlackTool.definition.inputSchema.required).toEqual([
-        'message',
-      ]);
+
+      expect(mockServer.registerTool).toHaveBeenCalledTimes(1);
+      const [name, config] = mockServer.registerTool.mock.calls[0];
+      expect(name).toBe('send_to_slack');
+      expect(config.description).toBe('Send a text message to Slack');
+      expect(config.inputSchema).toBeDefined();
+      // inputSchema is now ZodRawShape (schema.shape)
+      expect(config.inputSchema.message).toBeDefined();
     });
   });
 
@@ -38,6 +41,12 @@ describe('sendToSlackTool', () => {
         message: testMessage,
       });
 
+      registerSendToSlackTool(
+        mockServer as unknown as McpServer,
+        mockSlackClient as unknown as SlackClient,
+      );
+
+      const handler = mockServer.registerTool.mock.calls[0][2];
       const result = await handler({ message: testMessage });
 
       expect(mockSlackClient.sendMessage).toHaveBeenCalledTimes(1);
@@ -53,6 +62,12 @@ describe('sendToSlackTool', () => {
       const errorMessage = 'Network error';
       mockSlackClient.sendMessage.mockRejectedValue(new Error(errorMessage));
 
+      registerSendToSlackTool(
+        mockServer as unknown as McpServer,
+        mockSlackClient as unknown as SlackClient,
+      );
+
+      const handler = mockServer.registerTool.mock.calls[0][2];
       const result = await handler({ message: 'Test message' });
 
       expect(result.isError).toBe(true);
@@ -63,10 +78,15 @@ describe('sendToSlackTool', () => {
     });
 
     it('should handle non-Error exceptions', async () => {
-      // Simulate a non-Error object being thrown
       const nonErrorObject = { type: 'CustomError', message: 'String error' };
       mockSlackClient.sendMessage.mockRejectedValue(nonErrorObject);
 
+      registerSendToSlackTool(
+        mockServer as unknown as McpServer,
+        mockSlackClient as unknown as SlackClient,
+      );
+
+      const handler = mockServer.registerTool.mock.calls[0][2];
       const result = await handler({ message: 'Test message' });
 
       expect(result.isError).toBe(true);
