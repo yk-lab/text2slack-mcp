@@ -1,17 +1,22 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { SlackClient } from '../../src/services/slack-client.js';
+import {
+  DEFAULT_RETRY_CONFIG,
+  SlackClient,
+} from '../../src/services/slack-client.js';
 
 describe('SlackClient', () => {
   let client: SlackClient;
   const mockWebhookUrl = 'https://hooks.slack.com/services/TEST/WEBHOOK/URL';
 
   beforeEach(() => {
-    client = new SlackClient(mockWebhookUrl);
+    client = new SlackClient(mockWebhookUrl, { retry: false });
     vi.restoreAllMocks();
+    vi.useFakeTimers();
   });
 
   afterEach(() => {
     vi.unstubAllGlobals();
+    vi.useRealTimers();
   });
 
   describe('constructor', () => {
@@ -26,6 +31,18 @@ describe('SlackClient', () => {
 
     it('should accept custom timeout option', () => {
       const customClient = new SlackClient(mockWebhookUrl, { timeoutMs: 5000 });
+      expect(customClient).toBeDefined();
+    });
+
+    it('should accept custom retry config', () => {
+      const customClient = new SlackClient(mockWebhookUrl, {
+        retry: { maxRetries: 5, baseDelayMs: 500, maxDelayMs: 5000 },
+      });
+      expect(customClient).toBeDefined();
+    });
+
+    it('should accept retry: false to disable retries', () => {
+      const customClient = new SlackClient(mockWebhookUrl, { retry: false });
       expect(customClient).toBeDefined();
     });
   });
@@ -91,6 +108,7 @@ describe('SlackClient', () => {
     it('should throw timeout error when request times out', async () => {
       const clientWithShortTimeout = new SlackClient(mockWebhookUrl, {
         timeoutMs: 10,
+        retry: false,
       });
 
       const abortError = new Error('The operation was aborted');
@@ -112,6 +130,230 @@ describe('SlackClient', () => {
       await expect(client.sendMessage('Test message')).rejects.toThrow(
         'Network failure',
       );
+    });
+  });
+
+  describe('retry logic', () => {
+    it('should retry on 5xx errors with exponential backoff', async () => {
+      const retryClient = new SlackClient(mockWebhookUrl, {
+        retry: { maxRetries: 2, baseDelayMs: 100, maxDelayMs: 1000 },
+      });
+
+      const mockFetch = vi
+        .fn()
+        .mockResolvedValueOnce({ ok: false, status: 500 })
+        .mockResolvedValueOnce({ ok: false, status: 503 })
+        .mockResolvedValueOnce({ ok: true, status: 200 });
+      vi.stubGlobal('fetch', mockFetch);
+
+      const resultPromise = retryClient.sendMessage('Test message');
+
+      // First attempt fails immediately
+      await vi.advanceTimersByTimeAsync(0);
+
+      // Wait for first retry delay (100ms)
+      await vi.advanceTimersByTimeAsync(100);
+
+      // Wait for second retry delay (200ms)
+      await vi.advanceTimersByTimeAsync(200);
+
+      const result = await resultPromise;
+
+      expect(result.success).toBe(true);
+      expect(mockFetch).toHaveBeenCalledTimes(3);
+    });
+
+    it('should retry on timeout errors', async () => {
+      const retryClient = new SlackClient(mockWebhookUrl, {
+        timeoutMs: 10,
+        retry: { maxRetries: 1, baseDelayMs: 50, maxDelayMs: 1000 },
+      });
+
+      const abortError = new Error('The operation was aborted');
+      abortError.name = 'AbortError';
+
+      const mockFetch = vi
+        .fn()
+        .mockRejectedValueOnce(abortError)
+        .mockResolvedValueOnce({ ok: true, status: 200 });
+      vi.stubGlobal('fetch', mockFetch);
+
+      const resultPromise = retryClient.sendMessage('Test message');
+
+      // First attempt fails
+      await vi.advanceTimersByTimeAsync(0);
+
+      // Wait for retry delay
+      await vi.advanceTimersByTimeAsync(50);
+
+      const result = await resultPromise;
+
+      expect(result.success).toBe(true);
+      expect(mockFetch).toHaveBeenCalledTimes(2);
+    });
+
+    it('should not retry on 4xx errors', async () => {
+      const retryClient = new SlackClient(mockWebhookUrl, {
+        retry: { maxRetries: 2, baseDelayMs: 100, maxDelayMs: 1000 },
+      });
+
+      const mockFetch = vi.fn().mockResolvedValue({ ok: false, status: 400 });
+      vi.stubGlobal('fetch', mockFetch);
+
+      await expect(retryClient.sendMessage('Test message')).rejects.toThrow(
+        'Failed to send message to Slack. Status: 400',
+      );
+
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+    });
+
+    it('should not retry when retry is disabled', async () => {
+      const noRetryClient = new SlackClient(mockWebhookUrl, { retry: false });
+
+      const mockFetch = vi.fn().mockResolvedValue({ ok: false, status: 500 });
+      vi.stubGlobal('fetch', mockFetch);
+
+      await expect(noRetryClient.sendMessage('Test message')).rejects.toThrow(
+        'Failed to send message to Slack. Status: 500',
+      );
+
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+    });
+
+    it('should throw after max retries exceeded', async () => {
+      const retryClient = new SlackClient(mockWebhookUrl, {
+        retry: { maxRetries: 2, baseDelayMs: 50, maxDelayMs: 1000 },
+      });
+
+      const mockFetch = vi.fn().mockResolvedValue({ ok: false, status: 500 });
+      vi.stubGlobal('fetch', mockFetch);
+
+      // Immediately attach error handler to prevent unhandled rejection warning
+      let caughtError: Error | null = null;
+      const resultPromise = retryClient
+        .sendMessage('Test message')
+        .catch((error) => {
+          caughtError = error as Error;
+        });
+
+      // Run all pending timers to completion
+      await vi.runAllTimersAsync();
+
+      // Wait for the promise to complete
+      await resultPromise;
+
+      expect(caughtError).not.toBeNull();
+      expect(caughtError?.message).toContain(
+        'Failed to send message to Slack. Status: 500',
+      );
+      expect(mockFetch).toHaveBeenCalledTimes(3); // 1 initial + 2 retries
+    });
+
+    it('should cap delay at maxDelayMs', async () => {
+      const retryClient = new SlackClient(mockWebhookUrl, {
+        retry: { maxRetries: 3, baseDelayMs: 1000, maxDelayMs: 2000 },
+      });
+
+      const mockFetch = vi
+        .fn()
+        .mockResolvedValueOnce({ ok: false, status: 500 })
+        .mockResolvedValueOnce({ ok: false, status: 500 })
+        .mockResolvedValueOnce({ ok: false, status: 500 })
+        .mockResolvedValueOnce({ ok: true, status: 200 });
+      vi.stubGlobal('fetch', mockFetch);
+
+      const resultPromise = retryClient.sendMessage('Test message');
+
+      // First retry: 1000ms
+      await vi.advanceTimersByTimeAsync(1000);
+      // Second retry: 2000ms (capped from 2000ms)
+      await vi.advanceTimersByTimeAsync(2000);
+      // Third retry: 2000ms (capped from 4000ms)
+      await vi.advanceTimersByTimeAsync(2000);
+
+      const result = await resultPromise;
+
+      expect(result.success).toBe(true);
+      expect(mockFetch).toHaveBeenCalledTimes(4);
+    });
+
+    it('should use default retry config when not specified', async () => {
+      const defaultClient = new SlackClient(mockWebhookUrl);
+
+      expect(DEFAULT_RETRY_CONFIG).toEqual({
+        maxRetries: 3,
+        baseDelayMs: 1000,
+        maxDelayMs: 10000,
+      });
+
+      const mockFetch = vi.fn().mockResolvedValue({ ok: true, status: 200 });
+      vi.stubGlobal('fetch', mockFetch);
+
+      const result = await defaultClient.sendMessage('Test message');
+      expect(result.success).toBe(true);
+    });
+
+    it('should retry on network errors', async () => {
+      const retryClient = new SlackClient(mockWebhookUrl, {
+        retry: { maxRetries: 1, baseDelayMs: 50, maxDelayMs: 1000 },
+      });
+
+      const networkError = new TypeError('fetch failed');
+      const mockFetch = vi
+        .fn()
+        .mockRejectedValueOnce(networkError)
+        .mockResolvedValueOnce({ ok: true, status: 200 });
+      vi.stubGlobal('fetch', mockFetch);
+
+      const resultPromise = retryClient.sendMessage('Test message');
+
+      await vi.advanceTimersByTimeAsync(50);
+
+      const result = await resultPromise;
+
+      expect(result.success).toBe(true);
+      expect(mockFetch).toHaveBeenCalledTimes(2);
+    });
+
+    it('should retry on AbortError (timeout)', async () => {
+      const retryClient = new SlackClient(mockWebhookUrl, {
+        retry: { maxRetries: 1, baseDelayMs: 50, maxDelayMs: 1000 },
+      });
+
+      const abortError = new Error('The operation was aborted');
+      abortError.name = 'AbortError';
+
+      const mockFetch = vi
+        .fn()
+        .mockRejectedValueOnce(abortError)
+        .mockResolvedValueOnce({ ok: true, status: 200 });
+      vi.stubGlobal('fetch', mockFetch);
+
+      const resultPromise = retryClient.sendMessage('Test message');
+
+      await vi.advanceTimersByTimeAsync(50);
+
+      const result = await resultPromise;
+
+      expect(result.success).toBe(true);
+      expect(mockFetch).toHaveBeenCalledTimes(2);
+    });
+
+    it('should not retry on non-Error objects', async () => {
+      const retryClient = new SlackClient(mockWebhookUrl, {
+        retry: { maxRetries: 2, baseDelayMs: 50, maxDelayMs: 1000 },
+      });
+
+      // Mock fetch to throw a non-Error object
+      const mockFetch = vi.fn().mockRejectedValue('string error');
+      vi.stubGlobal('fetch', mockFetch);
+
+      // Non-Error objects are wrapped in Error and not retried
+      await expect(retryClient.sendMessage('Test message')).rejects.toThrow(
+        'string error',
+      );
+
+      expect(mockFetch).toHaveBeenCalledTimes(1);
     });
   });
 });

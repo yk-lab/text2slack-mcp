@@ -107,9 +107,10 @@ async function createMcpTestServer(webhookUrl: string): Promise<{
 async function sendRequest(
   server: ChildProcess,
   request: object,
+  timeoutMs = 5000,
 ): Promise<JsonRpcResponse> {
   server.stdin!.write(JSON.stringify(request) + '\n');
-  return waitForResponse(server);
+  return waitForResponse(server, timeoutMs);
 }
 
 describe('MCP Server Integration Tests', () => {
@@ -261,7 +262,7 @@ describe('MCP Server Integration Tests', () => {
     }
   });
 
-  it('should handle Slack webhook failure', async () => {
+  it('should handle Slack webhook failure', { timeout: 20000 }, async () => {
     // Create a mock server that returns error
     const errorServer = createServer((_req, res) => {
       res.writeHead(500, { 'Content-Type': 'text/plain' });
@@ -280,17 +281,23 @@ describe('MCP Server Integration Tests', () => {
     );
 
     try {
-      const response = await sendRequest(server, {
-        jsonrpc: '2.0',
-        method: 'tools/call',
-        params: {
-          name: 'send_to_slack',
-          arguments: {
-            message: 'This should fail',
+      // Increased timeout because of retry logic (3 retries with exponential backoff)
+      // Total retry time: 1000 + 2000 + 4000 = 7000ms, plus initial request time
+      const response = await sendRequest(
+        server,
+        {
+          jsonrpc: '2.0',
+          method: 'tools/call',
+          params: {
+            name: 'send_to_slack',
+            arguments: {
+              message: 'This should fail',
+            },
           },
+          id: 4,
         },
-        id: 4,
-      });
+        15000,
+      );
 
       expect(response.jsonrpc).toBe('2.0');
       expect(response.id).toBe(4);
