@@ -264,12 +264,9 @@ describe('SlackClient', () => {
 
       const resultPromise = retryClient.sendMessage('Test message');
 
-      // First retry: 1000ms
-      await vi.advanceTimersByTimeAsync(1000);
-      // Second retry: 2000ms (capped from 2000ms)
-      await vi.advanceTimersByTimeAsync(2000);
-      // Third retry: 2000ms (capped from 4000ms)
-      await vi.advanceTimersByTimeAsync(2000);
+      // Run all timers to completion (jitter makes exact timing unpredictable)
+      // Delays with jitter: 500-1000ms, 1000-2000ms, 1000-2000ms (capped)
+      await vi.runAllTimersAsync();
 
       const result = await resultPromise;
 
@@ -438,32 +435,89 @@ describe('SlackClient', () => {
     });
 
     it('should create independent copy of DEFAULT_RETRY_CONFIG', () => {
-      // Store original values
-      const originalMaxRetries = DEFAULT_RETRY_CONFIG.maxRetries;
+      // Verify that DEFAULT_RETRY_CONFIG has expected default values
+      expect(DEFAULT_RETRY_CONFIG).toEqual({
+        maxRetries: 3,
+        baseDelayMs: 1000,
+        maxDelayMs: 10000,
+      });
 
-      // Create a client with default config
+      // Create two clients with default config
       const client1 = new SlackClient(mockWebhookUrl);
-
-      // Mutate DEFAULT_RETRY_CONFIG (this should NOT affect client1)
-      DEFAULT_RETRY_CONFIG.maxRetries = 99;
-
-      // Create another client
       const client2 = new SlackClient(mockWebhookUrl);
 
-      // Restore original value
-      DEFAULT_RETRY_CONFIG.maxRetries = originalMaxRetries;
-
-      // Both clients should have independent configs
-      // client1 was created before mutation, client2 after
-      // Both should have valid clamped values (not 99)
+      // Both clients should be independent instances
       const mockFetch = vi.fn().mockResolvedValue({ ok: true, status: 200 });
       vi.stubGlobal('fetch', mockFetch);
 
-      // This test verifies that the constructor copies the config
-      // If it didn't, client2 would have maxRetries=10 (clamped from 99)
-      // but client1 would have the original value
       expect(client1).toBeDefined();
       expect(client2).toBeDefined();
+      // Note: The normalizeRetryConfig method creates a copy of the config,
+      // so each client has its own independent retry configuration
+    });
+
+    it('should retry with default config on transient failures', async () => {
+      const defaultClient = new SlackClient(mockWebhookUrl);
+
+      const mockFetch = vi
+        .fn()
+        .mockResolvedValueOnce({ ok: false, status: 500 })
+        .mockResolvedValueOnce({ ok: true, status: 200 });
+      vi.stubGlobal('fetch', mockFetch);
+
+      const resultPromise = defaultClient.sendMessage('Test message');
+
+      // Run all timers - default baseDelayMs is 1000ms (with jitter: 500-1000ms)
+      await vi.runAllTimersAsync();
+
+      const result = await resultPromise;
+      expect(result.success).toBe(true);
+      expect(mockFetch).toHaveBeenCalledTimes(2);
+    });
+
+    it('should apply jitter to delay (delay is 50-100% of calculated value)', async () => {
+      // Mock Math.random to return predictable values
+      const randomSpy = vi.spyOn(Math, 'random');
+
+      // Test with random = 0 (minimum jitter: 50% of delay)
+      randomSpy.mockReturnValue(0);
+      const retryClient1 = new SlackClient(mockWebhookUrl, {
+        retry: { maxRetries: 1, baseDelayMs: 100, maxDelayMs: 1000 },
+      });
+
+      let mockFetch = vi
+        .fn()
+        .mockResolvedValueOnce({ ok: false, status: 500 })
+        .mockResolvedValueOnce({ ok: true, status: 200 });
+      vi.stubGlobal('fetch', mockFetch);
+
+      let resultPromise = retryClient1.sendMessage('Test message');
+
+      // With jitter = 0, delay should be 50% of 100ms = 50ms
+      await vi.advanceTimersByTimeAsync(50);
+      let result = await resultPromise;
+      expect(result.success).toBe(true);
+
+      // Test with random = 1 (maximum jitter: 100% of delay)
+      randomSpy.mockReturnValue(1);
+      const retryClient2 = new SlackClient(mockWebhookUrl, {
+        retry: { maxRetries: 1, baseDelayMs: 100, maxDelayMs: 1000 },
+      });
+
+      mockFetch = vi
+        .fn()
+        .mockResolvedValueOnce({ ok: false, status: 500 })
+        .mockResolvedValueOnce({ ok: true, status: 200 });
+      vi.stubGlobal('fetch', mockFetch);
+
+      resultPromise = retryClient2.sendMessage('Test message');
+
+      // With jitter = 1, delay should be 100% of 100ms = 100ms
+      await vi.advanceTimersByTimeAsync(100);
+      result = await resultPromise;
+      expect(result.success).toBe(true);
+
+      randomSpy.mockRestore();
     });
   });
 });

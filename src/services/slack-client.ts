@@ -189,15 +189,20 @@ export class SlackClient {
   }
 
   /**
-   * Calculates the delay for the next retry attempt using exponential backoff.
+   * Calculates the delay for the next retry attempt using exponential backoff with jitter.
+   *
+   * Jitter is added to prevent the "thundering herd" problem when multiple clients
+   * retry simultaneously. The actual delay will be between 50-100% of the calculated delay.
    *
    * @param attempt - The current attempt number (0-indexed)
    * @param config - The retry configuration
-   * @returns The delay in milliseconds
+   * @returns The delay in milliseconds (with jitter applied)
    */
   private calculateBackoffDelay(attempt: number, config: RetryConfig): number {
     const delay = config.baseDelayMs * 2 ** attempt;
-    return Math.min(delay, config.maxDelayMs);
+    const cappedDelay = Math.min(delay, config.maxDelayMs);
+    // Add jitter: randomize between 50-100% of the delay to prevent thundering herd
+    return Math.floor(cappedDelay * (0.5 + Math.random() * 0.5));
   }
 
   /**
