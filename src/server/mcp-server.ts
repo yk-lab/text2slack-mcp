@@ -1,3 +1,4 @@
+import { createRequire } from 'node:module';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import {
@@ -6,6 +7,13 @@ import {
   ListToolsRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js';
 import type { Tool, ToolHandler } from '../types/index.js';
+
+const require = createRequire(import.meta.url);
+// Path is relative to dist/src/server/mcp-server.js after compilation
+const pkg = require('../../../package.json') as {
+  name: string;
+  version: string;
+};
 
 export class MCPServer {
   private readonly tools: Tool[];
@@ -24,8 +32,8 @@ export class MCPServer {
     // Create MCP server
     this.server = new Server(
       {
-        name: 'text2slack-mcp',
-        version: '1.0.0',
+        name: pkg.name,
+        version: pkg.version,
       },
       {
         capabilities: {
