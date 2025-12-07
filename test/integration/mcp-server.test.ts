@@ -6,9 +6,35 @@ import { createServer } from 'node:http';
 import { createRequire } from 'node:module';
 import { setTimeout } from 'node:timers/promises';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { DEFAULT_RETRY_CONFIG } from '../../src/services/slack-client.js';
 
 const require = createRequire(import.meta.url);
 const pkg = require('../../package.json') as { name: string; version: string };
+
+/**
+ * Calculate the maximum total retry time based on DEFAULT_RETRY_CONFIG.
+ * This ensures test timeouts stay in sync with retry configuration changes.
+ *
+ * Formula: sum of baseDelayMs * 2^i for i in 0..maxRetries-1
+ * Example with default config (3 retries, 1000ms base, 10000ms max):
+ *   Attempt 0: fail -> wait min(1000 * 2^0, 10000) = 1000ms
+ *   Attempt 1: fail -> wait min(1000 * 2^1, 10000) = 2000ms
+ *   Attempt 2: fail -> wait min(1000 * 2^2, 10000) = 4000ms
+ *   Attempt 3: fail -> done
+ *   Total delay: 7000ms
+ */
+function calculateMaxRetryTime(): number {
+  const { maxRetries, baseDelayMs, maxDelayMs } = DEFAULT_RETRY_CONFIG;
+  let totalDelay = 0;
+  for (let i = 0; i < maxRetries; i++) {
+    totalDelay += Math.min(baseDelayMs * 2 ** i, maxDelayMs);
+  }
+  return totalDelay;
+}
+
+// Buffer time for request processing, network latency, etc.
+const RETRY_TEST_BUFFER_MS = 5000;
+const RETRY_TEST_TIMEOUT_MS = calculateMaxRetryTime() + RETRY_TEST_BUFFER_MS;
 
 interface JsonRpcResponse {
   jsonrpc: string;
@@ -262,53 +288,59 @@ describe('MCP Server Integration Tests', () => {
     }
   });
 
-  it('should handle Slack webhook failure', { timeout: 20000 }, async () => {
-    // Create a mock server that returns error
-    const errorServer = createServer((_req, res) => {
-      res.writeHead(500, { 'Content-Type': 'text/plain' });
-      res.end('Internal Server Error');
-    });
+  it(
+    'should handle Slack webhook failure',
+    { timeout: RETRY_TEST_TIMEOUT_MS * 2 },
+    async () => {
+      // Create a mock server that returns error
+      const errorServer = createServer((_req, res) => {
+        res.writeHead(500, { 'Content-Type': 'text/plain' });
+        res.end('Internal Server Error');
+      });
 
-    await new Promise<void>((resolve) => {
-      errorServer.listen(0, '127.0.0.1', resolve);
-    });
+      await new Promise<void>((resolve) => {
+        errorServer.listen(0, '127.0.0.1', resolve);
+      });
 
-    const address = errorServer.address();
-    const errorPort = address && typeof address === 'object' ? address.port : 0;
+      const address = errorServer.address();
+      const errorPort =
+        address && typeof address === 'object' ? address.port : 0;
 
-    const { server, cleanup } = await createMcpTestServer(
-      `http://127.0.0.1:${errorPort}/webhook`,
-    );
+      const { server, cleanup } = await createMcpTestServer(
+        `http://127.0.0.1:${errorPort}/webhook`,
+      );
 
-    try {
-      // Increased timeout because of retry logic (3 retries with exponential backoff)
-      // Total retry time: 1000 + 2000 + 4000 = 7000ms, plus initial request time
-      const response = await sendRequest(
-        server,
-        {
-          jsonrpc: '2.0',
-          method: 'tools/call',
-          params: {
-            name: 'send_to_slack',
-            arguments: {
-              message: 'This should fail',
+      try {
+        // Timeout calculated from DEFAULT_RETRY_CONFIG to stay in sync with config changes
+        const response = await sendRequest(
+          server,
+          {
+            jsonrpc: '2.0',
+            method: 'tools/call',
+            params: {
+              name: 'send_to_slack',
+              arguments: {
+                message: 'This should fail',
+              },
             },
+            id: 4,
           },
-          id: 4,
-        },
-        15000,
-      );
+          RETRY_TEST_TIMEOUT_MS,
+        );
 
-      expect(response.jsonrpc).toBe('2.0');
-      expect(response.id).toBe(4);
-      expect(response.result).toBeDefined();
-      expect(response.result?.isError).toBe(true);
-      expect(response.result?.content?.[0].text).toContain(
-        'Failed to send message to Slack',
-      );
-    } finally {
-      await cleanup();
-      await new Promise<void>((resolve) => errorServer.close(() => resolve()));
-    }
-  });
+        expect(response.jsonrpc).toBe('2.0');
+        expect(response.id).toBe(4);
+        expect(response.result).toBeDefined();
+        expect(response.result?.isError).toBe(true);
+        expect(response.result?.content?.[0].text).toContain(
+          'Failed to send message to Slack',
+        );
+      } finally {
+        await cleanup();
+        await new Promise<void>((resolve) =>
+          errorServer.close(() => resolve()),
+        );
+      }
+    },
+  );
 });

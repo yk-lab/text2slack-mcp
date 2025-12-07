@@ -113,6 +113,14 @@ export class SlackClient {
    * - Timeout errors (AbortError)
    * - Server errors (5xx status codes)
    *
+   * @remarks
+   * This method uses error.name and error.message string matching to detect
+   * retryable errors. While this approach is somewhat fragile (error messages
+   * may vary across environments or change in future versions), it's currently
+   * the most practical approach since the fetch API and our error handling
+   * don't provide structured error codes. If structured error information
+   * becomes available in the future, prefer using that over string matching.
+   *
    * @param error - The error to check
    * @returns `true` if the error is retryable, `false` otherwise
    */
@@ -121,22 +129,25 @@ export class SlackClient {
       return false;
     }
 
-    // Timeout errors are retryable
+    // Timeout errors are retryable (standard AbortError from AbortController)
     if (error.name === 'AbortError') {
       return true;
     }
 
     // Network errors (fetch failures) are retryable
+    // Note: TypeError with 'fetch' in message is the standard pattern for network failures
     if (error.name === 'TypeError' && error.message.includes('fetch')) {
       return true;
     }
 
     // Server errors (5xx) are retryable
+    // Matches our error message format: "Failed to send message to Slack. Status: 5xx"
     if (error.message.includes('Status: 5')) {
       return true;
     }
 
-    // Timeout message from our wrapper
+    // Timeout message from our wrapper in doSendMessage
+    // Matches: "Request to Slack timed out after Xms"
     if (error.message.includes('timed out')) {
       return true;
     }
@@ -191,8 +202,10 @@ export class SlackClient {
       throw new Error('Message must be a non-empty string');
     }
 
-    const maxAttempts =
-      this.retryConfig === false ? 1 : this.retryConfig.maxRetries + 1;
+    // Use local variable for TypeScript type narrowing
+    // Member properties are not narrowed through conditionals
+    const retryConfig = this.retryConfig;
+    const maxAttempts = retryConfig === false ? 1 : retryConfig.maxRetries + 1;
     let lastError: Error | null = null;
 
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
@@ -202,7 +215,7 @@ export class SlackClient {
         lastError = error instanceof Error ? error : new Error(String(error));
 
         // Don't retry if retries are disabled or error is not retryable
-        if (this.retryConfig === false || !this.isRetryableError(error)) {
+        if (retryConfig === false || !this.isRetryableError(error)) {
           throw lastError;
         }
 
@@ -212,7 +225,7 @@ export class SlackClient {
         }
 
         // Wait before next retry with exponential backoff
-        const delay = this.calculateBackoffDelay(attempt, this.retryConfig);
+        const delay = this.calculateBackoffDelay(attempt, retryConfig);
         await this.sleep(delay);
       }
     }
