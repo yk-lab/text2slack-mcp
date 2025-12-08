@@ -102,7 +102,8 @@ cd text2slack-mcp
 pnpm install
 
 # Set environment variables
-echo "SLACK_WEBHOOK_URL=your_webhook_url_here" > .env
+cp .env.example .env
+# Edit .env file to set your SLACK_WEBHOOK_URL
 
 # Start the server
 pnpm start
