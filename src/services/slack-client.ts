@@ -1,3 +1,5 @@
+import { Logger } from './logger.js';
+
 /**
  * Result of sending a message to Slack.
  */
@@ -71,6 +73,7 @@ export class SlackClient {
   private readonly webhookUrl: string;
   private readonly timeoutMs: number;
   private readonly retryConfig: RetryConfig | false;
+  private readonly logger: Logger;
 
   /**
    * Creates a new Slack client instance.
@@ -103,6 +106,7 @@ export class SlackClient {
     this.webhookUrl = webhookUrl;
     this.timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
     this.retryConfig = this.normalizeRetryConfig(options.retry);
+    this.logger = new Logger();
   }
 
   /**
@@ -231,6 +235,11 @@ export class SlackClient {
       throw new Error('Message must be a non-empty string');
     }
 
+    const startTime = Date.now();
+    this.logger.info('Sending message to Slack', {
+      messageLength: message.length,
+    });
+
     // Use local variable for TypeScript type narrowing
     // Member properties are not narrowed through conditionals
     const retryConfig = this.retryConfig;
@@ -238,23 +247,46 @@ export class SlackClient {
 
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
       try {
-        return await this.doSendMessage(message);
+        const result = await this.doSendMessage(message);
+        this.logger.info('Message sent successfully', {
+          duration: Date.now() - startTime,
+          attempt: attempt + 1,
+        });
+        return result;
       } catch (error) {
         const wrappedError =
           error instanceof Error ? error : new Error(String(error));
 
         // Don't retry if retries are disabled or error is not retryable
         if (retryConfig === false || !this.isRetryableError(error)) {
+          this.logger.error('Failed to send message', wrappedError, {
+            duration: Date.now() - startTime,
+            attempt: attempt + 1,
+          });
           throw wrappedError;
         }
 
         // Throw on last attempt (no more retries)
         if (attempt === maxAttempts - 1) {
+          this.logger.error(
+            'Failed to send message after all retries',
+            wrappedError,
+            {
+              duration: Date.now() - startTime,
+              totalAttempts: maxAttempts,
+            },
+          );
           throw wrappedError;
         }
 
         // Wait before next retry with exponential backoff
         const delay = this.calculateBackoffDelay(attempt, retryConfig);
+        this.logger.warn('Retrying after transient error', {
+          attempt: attempt + 1,
+          maxAttempts,
+          delayMs: delay,
+          error: wrappedError.message,
+        });
         await this.sleep(delay);
       }
     }
