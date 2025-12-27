@@ -1,8 +1,10 @@
 import { createRequire } from 'node:module';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
+import { Logger } from '../services/logger.js';
 
 const require = createRequire(import.meta.url);
+const logger = new Logger();
 // Path is relative to dist/src/server/mcp-server.js after compilation
 const pkg = require('../../../package.json') as {
   name: string;
@@ -57,12 +59,15 @@ export function createMcpServer(): McpServer {
  * ```
  */
 export async function shutdownServer(server: McpServer): Promise<void> {
-  console.error('Shutting down MCP server...');
+  logger.info('Shutting down MCP server...');
   try {
     await server.close();
-    console.error('MCP server shut down successfully');
+    logger.info('MCP server shut down successfully');
   } catch (error) {
-    console.error('Error during server shutdown:', error);
+    logger.error(
+      'Error during server shutdown',
+      error instanceof Error ? error : new Error(String(error)),
+    );
     throw error;
   }
 }
@@ -110,19 +115,22 @@ export function setupSignalHandlers(
 
   const handleSignal = async (signal: string): Promise<void> => {
     if (isShuttingDown) {
-      console.error(`Received ${signal} during shutdown, forcing exit...`);
+      logger.warn('Forcing exit due to signal during shutdown', { signal });
       process.exit(1);
     }
 
     isShuttingDown = true;
-    console.error(`Received ${signal}, initiating graceful shutdown...`);
+    logger.info('Initiating graceful shutdown', { signal });
 
     try {
       await shutdownServer(server);
       onShutdown?.();
       process.exit(0);
-    } catch {
-      console.error('Failed to shutdown gracefully');
+    } catch (error) {
+      logger.error(
+        'Failed to shutdown gracefully',
+        error instanceof Error ? error : new Error(String(error)),
+      );
       process.exit(1);
     }
   };
@@ -166,9 +174,12 @@ export async function startServer(server: McpServer): Promise<void> {
   try {
     const transport = new StdioServerTransport();
     await server.connect(transport);
-    console.error('text2slack-mcp server running on stdio');
+    logger.info('MCP server started', { transport: 'stdio' });
   } catch (error) {
-    console.error('Failed to start MCP server:', error);
+    logger.error(
+      'Failed to start MCP server',
+      error instanceof Error ? error : new Error(String(error)),
+    );
     try {
       await shutdownServer(server);
     } catch {

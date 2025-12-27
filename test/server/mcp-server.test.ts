@@ -25,6 +25,42 @@ vi.mock('node:module', () => ({
   })),
 }));
 
+// Mock Logger to always be enabled and output JSON
+vi.mock('../../src/services/logger.js', () => ({
+  Logger: vi.fn().mockImplementation(function () {
+    return {
+      debug: vi.fn((message: string, metadata?: Record<string, unknown>) => {
+        console.error(JSON.stringify({ level: 'debug', message, metadata }));
+      }),
+      info: vi.fn((message: string, metadata?: Record<string, unknown>) => {
+        console.error(JSON.stringify({ level: 'info', message, metadata }));
+      }),
+      warn: vi.fn((message: string, metadata?: Record<string, unknown>) => {
+        console.error(JSON.stringify({ level: 'warn', message, metadata }));
+      }),
+      error: vi.fn(
+        (
+          message: string,
+          error?: Error,
+          metadata?: Record<string, unknown>,
+        ) => {
+          const errorMetadata: Record<string, unknown> = { ...metadata };
+          if (error) {
+            errorMetadata.error = error.message;
+          }
+          console.error(
+            JSON.stringify({
+              level: 'error',
+              message,
+              metadata: errorMetadata,
+            }),
+          );
+        },
+      ),
+    };
+  }),
+}));
+
 // Import after mocks are set up
 const {
   createMcpServer,
@@ -109,12 +145,18 @@ describe('mcp-server', () => {
       await shutdownServer(mockServer);
 
       expect(mockServer.close).toHaveBeenCalledTimes(1);
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        'Shutting down MCP server...',
+      // Verify structured log output
+      const calls = consoleErrorSpy.mock.calls.map((call) =>
+        JSON.parse(call[0] as string),
       );
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        'MCP server shut down successfully',
-      );
+      expect(
+        calls.some((log) => log.message === 'Shutting down MCP server...'),
+      ).toBe(true);
+      expect(
+        calls.some(
+          (log) => log.message === 'MCP server shut down successfully',
+        ),
+      ).toBe(true);
     });
 
     it('should throw error if shutdown fails', async () => {
@@ -126,10 +168,17 @@ describe('mcp-server', () => {
       await expect(shutdownServer(mockServer)).rejects.toThrow(
         'Shutdown failed',
       );
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        'Error during server shutdown:',
-        shutdownError,
+      // Verify structured log output
+      const calls = consoleErrorSpy.mock.calls.map((call) =>
+        JSON.parse(call[0] as string),
       );
+      expect(
+        calls.some(
+          (log) =>
+            log.message === 'Error during server shutdown' &&
+            log.metadata?.error === 'Shutdown failed',
+        ),
+      ).toBe(true);
     });
   });
 
@@ -194,9 +243,17 @@ describe('mcp-server', () => {
         { timeout: 1000 },
       );
 
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        'Received SIGINT, initiating graceful shutdown...',
+      // Verify structured log output for graceful shutdown initiation
+      const calls = consoleErrorSpy.mock.calls.map((call) =>
+        JSON.parse(call[0] as string),
       );
+      expect(
+        calls.some(
+          (log) =>
+            log.message === 'Initiating graceful shutdown' &&
+            log.metadata?.signal === 'SIGINT',
+        ),
+      ).toBe(true);
       await vi.waitFor(
         () => {
           expect(onShutdown).toHaveBeenCalled();
@@ -230,9 +287,17 @@ describe('mcp-server', () => {
         { timeout: 1000 },
       );
 
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        'Received SIGTERM, initiating graceful shutdown...',
+      // Verify structured log output for graceful shutdown initiation
+      const calls = consoleErrorSpy.mock.calls.map((call) =>
+        JSON.parse(call[0] as string),
       );
+      expect(
+        calls.some(
+          (log) =>
+            log.message === 'Initiating graceful shutdown' &&
+            log.metadata?.signal === 'SIGTERM',
+        ),
+      ).toBe(true);
       await vi.waitFor(
         () => {
           expect(processExitSpy).toHaveBeenCalledWith(0);
@@ -264,9 +329,12 @@ describe('mcp-server', () => {
       // Wait for the shutdown to start
       await vi.waitFor(
         () => {
-          expect(consoleErrorSpy).toHaveBeenCalledWith(
-            'Received SIGINT, initiating graceful shutdown...',
+          const calls = consoleErrorSpy.mock.calls.map((call) =>
+            JSON.parse(call[0] as string),
           );
+          expect(
+            calls.some((log) => log.message === 'Initiating graceful shutdown'),
+          ).toBe(true);
         },
         { timeout: 1000 },
       );
@@ -274,9 +342,17 @@ describe('mcp-server', () => {
       // Trigger second signal during shutdown
       sigintHandler();
 
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        'Received SIGINT during shutdown, forcing exit...',
+      // Verify force exit log
+      const calls = consoleErrorSpy.mock.calls.map((call) =>
+        JSON.parse(call[0] as string),
       );
+      expect(
+        calls.some(
+          (log) =>
+            log.message === 'Forcing exit due to signal during shutdown' &&
+            log.metadata?.signal === 'SIGINT',
+        ),
+      ).toBe(true);
       expect(processExitSpy).toHaveBeenCalledWith(1);
     });
 
@@ -304,9 +380,13 @@ describe('mcp-server', () => {
         { timeout: 1000 },
       );
 
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        'Failed to shutdown gracefully',
+      // Verify structured log output for failed shutdown
+      const calls = consoleErrorSpy.mock.calls.map((call) =>
+        JSON.parse(call[0] as string),
       );
+      expect(
+        calls.some((log) => log.message === 'Failed to shutdown gracefully'),
+      ).toBe(true);
     });
   });
 
@@ -320,9 +400,17 @@ describe('mcp-server', () => {
       await startServer(mockServer);
 
       expect(mockServer.connect).toHaveBeenCalledTimes(1);
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        'text2slack-mcp server running on stdio',
+      // Verify structured log output for server start
+      const calls = consoleErrorSpy.mock.calls.map((call) =>
+        JSON.parse(call[0] as string),
       );
+      expect(
+        calls.some(
+          (log) =>
+            log.message === 'MCP server started' &&
+            log.metadata?.transport === 'stdio',
+        ),
+      ).toBe(true);
       expect(processOnSpy).toHaveBeenCalledWith('SIGINT', expect.any(Function));
       expect(processOnSpy).toHaveBeenCalledWith(
         'SIGTERM',
@@ -341,10 +429,17 @@ describe('mcp-server', () => {
         'Connection failed',
       );
 
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        'Failed to start MCP server:',
-        startupError,
+      // Verify structured log output for startup failure
+      const calls = consoleErrorSpy.mock.calls.map((call) =>
+        JSON.parse(call[0] as string),
       );
+      expect(
+        calls.some(
+          (log) =>
+            log.message === 'Failed to start MCP server' &&
+            log.metadata?.error === 'Connection failed',
+        ),
+      ).toBe(true);
       expect(mockServer.close).toHaveBeenCalled();
     });
 
