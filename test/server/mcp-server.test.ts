@@ -25,38 +25,57 @@ vi.mock('node:module', () => ({
   })),
 }));
 
-// Mock Logger to always be enabled and output JSON
+// Helper functions for mock Logger to reduce nesting
+function createLogEntry(
+  level: string,
+  message: string,
+  metadata?: Record<string, unknown>,
+) {
+  console.error(
+    JSON.stringify({
+      timestamp: new Date().toISOString(),
+      level,
+      message,
+      metadata,
+    }),
+  );
+}
+
+function createErrorLogEntry(
+  message: string,
+  error?: Error,
+  metadata?: Record<string, unknown>,
+) {
+  const errorMetadata: Record<string, unknown> = { ...metadata };
+  if (error) {
+    errorMetadata.error = error.message;
+    errorMetadata.stack = error.stack;
+  }
+  console.error(
+    JSON.stringify({
+      timestamp: new Date().toISOString(),
+      level: 'error',
+      message,
+      metadata: errorMetadata,
+    }),
+  );
+}
+
+// Mock Logger to always be enabled and output JSON matching real implementation
 vi.mock('../../src/services/logger.js', () => ({
   Logger: vi.fn().mockImplementation(function () {
     return {
-      debug: vi.fn((message: string, metadata?: Record<string, unknown>) => {
-        console.error(JSON.stringify({ level: 'debug', message, metadata }));
-      }),
-      info: vi.fn((message: string, metadata?: Record<string, unknown>) => {
-        console.error(JSON.stringify({ level: 'info', message, metadata }));
-      }),
-      warn: vi.fn((message: string, metadata?: Record<string, unknown>) => {
-        console.error(JSON.stringify({ level: 'warn', message, metadata }));
-      }),
-      error: vi.fn(
-        (
-          message: string,
-          error?: Error,
-          metadata?: Record<string, unknown>,
-        ) => {
-          const errorMetadata: Record<string, unknown> = { ...metadata };
-          if (error) {
-            errorMetadata.error = error.message;
-            errorMetadata.stack = error.stack;
-          }
-          console.error(
-            JSON.stringify({
-              level: 'error',
-              message,
-              metadata: errorMetadata,
-            }),
-          );
-        },
+      debug: vi.fn((msg: string, meta?: Record<string, unknown>) =>
+        createLogEntry('debug', msg, meta),
+      ),
+      info: vi.fn((msg: string, meta?: Record<string, unknown>) =>
+        createLogEntry('info', msg, meta),
+      ),
+      warn: vi.fn((msg: string, meta?: Record<string, unknown>) =>
+        createLogEntry('warn', msg, meta),
+      ),
+      error: vi.fn((msg: string, err?: Error, meta?: Record<string, unknown>) =>
+        createErrorLogEntry(msg, err, meta),
       ),
     };
   }),
