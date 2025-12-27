@@ -4,7 +4,13 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { Logger } from '../services/logger.js';
 
 const require = createRequire(import.meta.url);
-const logger = new Logger();
+
+/**
+ * Default logger instance used when no logger is injected.
+ * @internal
+ */
+const defaultLogger = new Logger();
+
 // Path is relative to dist/src/server/mcp-server.js after compilation
 const pkg = require('../../../package.json') as {
   name: string;
@@ -47,6 +53,7 @@ export function createMcpServer(): McpServer {
  * If an error occurs during shutdown, it is logged and re-thrown.
  *
  * @param server - The MCP server instance to shut down
+ * @param logger - Optional logger instance for dependency injection (defaults to internal logger)
  * @throws {Error} If the server fails to close properly
  *
  * @example
@@ -58,7 +65,10 @@ export function createMcpServer(): McpServer {
  * }
  * ```
  */
-export async function shutdownServer(server: McpServer): Promise<void> {
+export async function shutdownServer(
+  server: McpServer,
+  logger: Logger = defaultLogger,
+): Promise<void> {
   logger.info('Shutting down MCP server...');
   try {
     await server.close();
@@ -83,6 +93,16 @@ export function _resetSignalHandlersForTesting(): void {
 }
 
 /**
+ * Options for signal handlers setup.
+ */
+export interface SignalHandlerOptions {
+  /** Optional callback executed after successful shutdown */
+  onShutdown?: () => void;
+  /** Optional logger instance for dependency injection */
+  logger?: Logger;
+}
+
+/**
  * Sets up signal handlers for graceful shutdown.
  *
  * Registers handlers for SIGINT and SIGTERM signals to gracefully
@@ -93,24 +113,25 @@ export function _resetSignalHandlersForTesting(): void {
  * register the handlers once.
  *
  * @param server - The MCP server instance to manage
- * @param onShutdown - Optional callback executed after successful shutdown
+ * @param options - Optional configuration including onShutdown callback and logger
  *
  * @example
  * ```typescript
- * setupSignalHandlers(server, () => {
- *   console.log('Cleanup complete');
+ * setupSignalHandlers(server, {
+ *   onShutdown: () => console.log('Cleanup complete'),
  * });
  * ```
  */
 export function setupSignalHandlers(
   server: McpServer,
-  onShutdown?: () => void,
+  options: SignalHandlerOptions = {},
 ): void {
   if (signalHandlersRegistered) {
     return;
   }
   signalHandlersRegistered = true;
 
+  const { onShutdown, logger = defaultLogger } = options;
   let isShuttingDown = false;
 
   const handleSignal = async (signal: string): Promise<void> => {
@@ -123,7 +144,7 @@ export function setupSignalHandlers(
     logger.info('Initiating graceful shutdown', { signal });
 
     try {
-      await shutdownServer(server);
+      await shutdownServer(server, logger);
       onShutdown?.();
       process.exit(0);
     } catch (error) {
@@ -144,6 +165,14 @@ export function setupSignalHandlers(
 }
 
 /**
+ * Options for starting the server.
+ */
+export interface StartServerOptions {
+  /** Optional logger instance for dependency injection */
+  logger?: Logger;
+}
+
+/**
  * Starts the MCP server with signal handling and error recovery.
  *
  * This function:
@@ -152,6 +181,7 @@ export function setupSignalHandlers(
  * 3. Handles startup errors by attempting cleanup before re-throwing
  *
  * @param server - The MCP server instance to start
+ * @param options - Optional configuration including logger
  * @throws {Error} If the server fails to start or connect
  *
  * @example
@@ -167,9 +197,14 @@ export function setupSignalHandlers(
  * }
  * ```
  */
-export async function startServer(server: McpServer): Promise<void> {
+export async function startServer(
+  server: McpServer,
+  options: StartServerOptions = {},
+): Promise<void> {
+  const { logger = defaultLogger } = options;
+
   // Setup signal handlers before starting
-  setupSignalHandlers(server);
+  setupSignalHandlers(server, { logger });
 
   try {
     const transport = new StdioServerTransport();
@@ -181,7 +216,7 @@ export async function startServer(server: McpServer): Promise<void> {
       error instanceof Error ? error : new Error(String(error)),
     );
     try {
-      await shutdownServer(server);
+      await shutdownServer(server, logger);
     } catch {
       // Ignore shutdown errors during startup failure
     }

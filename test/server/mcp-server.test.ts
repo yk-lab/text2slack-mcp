@@ -47,6 +47,7 @@ vi.mock('../../src/services/logger.js', () => ({
           const errorMetadata: Record<string, unknown> = { ...metadata };
           if (error) {
             errorMetadata.error = error.message;
+            errorMetadata.stack = error.stack;
           }
           console.error(
             JSON.stringify({
@@ -224,7 +225,7 @@ describe('mcp-server', () => {
       } as unknown as McpServer;
       const onShutdown = vi.fn();
 
-      setupSignalHandlers(mockServer, onShutdown);
+      setupSignalHandlers(mockServer, { onShutdown });
 
       // Get the SIGINT handler
       const sigintCall = processOnSpy.mock.calls.find(
