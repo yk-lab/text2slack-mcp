@@ -96,8 +96,11 @@ npx text2slack-mcp
 ```plain
 src/
 ├── services/slack-client.ts  # Slack通信ロジック
+├── services/logger.ts        # 構造化ロギング
 ├── tools/send-to-slack.ts    # MCPツール定義
-└── server/mcp-server.ts      # MCPサーバー実装
+├── server/mcp-server.ts      # MCPサーバー実装
+├── utils/validation.ts       # バリデーションユーティリティ
+└── types/index.ts            # 公開型の集約（再エクスポート）
 
 cli.ts                        # エントリーポイント（依存性注入）
 
@@ -152,7 +155,9 @@ text2slack-mcp/
 ├── src/                       # ソースコード
 │   ├── services/             # ビジネスロジック
 │   ├── tools/                # MCPツール定義
-│   └── server/               # MCPサーバー実装
+│   ├── server/               # MCPサーバー実装
+│   ├── utils/                # ユーティリティ
+│   └── types/                # 公開型定義
 ├── test/                      # テストファイル
 │   ├── services/             # 単体テスト
 │   ├── tools/                # 単体テスト
