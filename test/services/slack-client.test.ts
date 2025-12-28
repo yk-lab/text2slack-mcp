@@ -22,7 +22,25 @@ describe('SlackClient', () => {
   describe('constructor', () => {
     it('should throw error if webhook URL is not provided', () => {
       // @ts-expect-error Testing invalid input
-      expect(() => new SlackClient()).toThrow('Slack webhook URL is required');
+      expect(() => new SlackClient()).toThrow('Webhook URL is required');
+    });
+
+    it('should throw error for invalid URL format', () => {
+      expect(() => new SlackClient('not-a-url')).toThrow(
+        'Webhook URL is not a valid URL',
+      );
+    });
+
+    it('should throw error for HTTP URL (non-HTTPS)', () => {
+      expect(
+        () => new SlackClient('http://hooks.slack.com/services/xxx'),
+      ).toThrow('Webhook URL must use HTTPS');
+    });
+
+    it('should accept valid HTTPS webhook URL', () => {
+      expect(
+        () => new SlackClient('https://hooks.slack.com/services/xxx'),
+      ).not.toThrow();
     });
 
     it('should create instance with valid webhook URL', () => {
@@ -45,6 +63,14 @@ describe('SlackClient', () => {
       const customClient = new SlackClient(mockWebhookUrl, { retry: false });
       expect(customClient).toBeDefined();
     });
+
+    it('should accept custom maxMessageLength option', () => {
+      const customClient = new SlackClient(mockWebhookUrl, {
+        maxMessageLength: 2000,
+        retry: false,
+      });
+      expect(customClient).toBeDefined();
+    });
   });
 
   describe('sendMessage', () => {
@@ -58,6 +84,37 @@ describe('SlackClient', () => {
       // @ts-expect-error Testing invalid input
       await expect(client.sendMessage(123)).rejects.toThrow(
         'Message must be a non-empty string',
+      );
+    });
+
+    it('should throw error if message exceeds max length', async () => {
+      const longMessage = 'x'.repeat(4001);
+      await expect(client.sendMessage(longMessage)).rejects.toThrow(
+        'Message exceeds maximum length of 4000 characters',
+      );
+    });
+
+    it('should accept message at exactly max length', async () => {
+      const mockFetch = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+      });
+      vi.stubGlobal('fetch', mockFetch);
+
+      const exactMessage = 'x'.repeat(4000);
+      const result = await client.sendMessage(exactMessage);
+      expect(result.success).toBe(true);
+    });
+
+    it('should respect custom maxMessageLength option', async () => {
+      const customClient = new SlackClient(mockWebhookUrl, {
+        maxMessageLength: 100,
+        retry: false,
+      });
+
+      const longMessage = 'x'.repeat(101);
+      await expect(customClient.sendMessage(longMessage)).rejects.toThrow(
+        'Message exceeds maximum length of 100 characters',
       );
     });
 

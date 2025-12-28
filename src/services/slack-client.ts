@@ -1,3 +1,8 @@
+import {
+  DEFAULT_MAX_MESSAGE_LENGTH,
+  validateMessage,
+  validateWebhookUrl,
+} from '../utils/validation.js';
 import { Logger } from './logger.js';
 
 /**
@@ -55,6 +60,12 @@ export interface SlackClientOptions {
    * @default DEFAULT_RETRY_CONFIG
    */
   retry?: RetryConfig | false;
+  /**
+   * Maximum allowed message length in characters.
+   * Default is 4000 (Slack's limit). Discord uses 2000.
+   * @default 4000
+   */
+  maxMessageLength?: number;
 }
 
 const DEFAULT_TIMEOUT_MS = 30000; // 30 seconds
@@ -73,14 +84,15 @@ export class SlackClient {
   private readonly webhookUrl: string;
   private readonly timeoutMs: number;
   private readonly retryConfig: RetryConfig | false;
+  private readonly maxMessageLength: number;
   private readonly logger: Logger;
 
   /**
    * Creates a new Slack client instance.
    *
-   * @param webhookUrl - The Slack Incoming Webhook URL
+   * @param webhookUrl - The webhook URL (Slack, Discord, Mattermost, etc.)
    * @param options - Optional configuration options
-   * @throws {Error} If webhook URL is not provided
+   * @throws {ConfigError} If webhook URL is empty, invalid, or uses non-HTTPS protocol
    *
    * @example
    * ```typescript
@@ -100,12 +112,12 @@ export class SlackClient {
    * ```
    */
   constructor(webhookUrl: string, options: SlackClientOptions = {}) {
-    if (!webhookUrl) {
-      throw new Error('Slack webhook URL is required');
-    }
+    validateWebhookUrl(webhookUrl);
     this.webhookUrl = webhookUrl;
     this.timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
     this.retryConfig = this.normalizeRetryConfig(options.retry);
+    this.maxMessageLength =
+      options.maxMessageLength ?? DEFAULT_MAX_MESSAGE_LENGTH;
     this.logger = new Logger();
   }
 
@@ -219,7 +231,7 @@ export class SlackClient {
    *
    * @param message - The message text to send
    * @returns Promise resolving to the send result
-   * @throws {Error} If message is empty or not a string
+   * @throws {MessageValidationError} If message is empty, not a string, or exceeds max length
    * @throws {Error} If the Slack API request fails after all retries
    * @throws {Error} If the request times out after all retries
    *
@@ -231,9 +243,7 @@ export class SlackClient {
    * ```
    */
   async sendMessage(message: string): Promise<SendMessageResult> {
-    if (!message || typeof message !== 'string') {
-      throw new Error('Message must be a non-empty string');
-    }
+    validateMessage(message, this.maxMessageLength);
 
     const startTime = Date.now();
     this.logger.info('Sending message to Slack', {
