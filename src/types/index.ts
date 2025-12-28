@@ -6,11 +6,15 @@
  *
  * @example
  * ```typescript
+ * // External package consumers
  * import type {
  *   SendMessageResult,
  *   SlackClientOptions,
  *   LogLevel,
- * } from './types/index.js';
+ * } from 'text2slack-mcp/types';
+ *
+ * // SlackClient can be imported separately
+ * import { SlackClient } from 'text2slack-mcp/services/slack-client';
  * ```
  *
  * @module
