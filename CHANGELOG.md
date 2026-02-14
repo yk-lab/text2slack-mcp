@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.0](https://github.com/yk-lab/text2slack-mcp/compare/v0.1.3...v1.0.0) (2026-02-14)
+
+
+### ⚠ BREAKING CHANGES
+
+* npm publishing now requires OIDC trusted publisher configuration
+
+### Features
+
+* add JUnit test results reporting to CI workflow ([#8](https://github.com/yk-lab/text2slack-mcp/issues/8)) ([e2e7fa9](https://github.com/yk-lab/text2slack-mcp/commit/e2e7fa9c6303041ac05cbda6a071be4c8d328a17))
+* add release-please and pkg-pr-new for automated releases ([#73](https://github.com/yk-lab/text2slack-mcp/issues/73)) ([7e1acd5](https://github.com/yk-lab/text2slack-mcp/commit/7e1acd557f8f6ff842654eb56322870cab6f4219))
+* **logger:** add structured logging for debugging and monitoring ([#113](https://github.com/yk-lab/text2slack-mcp/issues/113)) ([49330c2](https://github.com/yk-lab/text2slack-mcp/commit/49330c23a6206c7174f698a21c1e45700892c0fe))
+* migrate codebase to TypeScript ([#77](https://github.com/yk-lab/text2slack-mcp/issues/77)) ([87a08bc](https://github.com/yk-lab/text2slack-mcp/commit/87a08bc1c809815d24d9b93711bdc758e3702e6e))
+* migrate npm publishing from token-based to OIDC authentication ([#21](https://github.com/yk-lab/text2slack-mcp/issues/21)) ([c110ae8](https://github.com/yk-lab/text2slack-mcp/commit/c110ae840dd28ba1eab3a1c590534136ff797a5b))
+* **slack-client:** add retry logic with exponential backoff ([#101](https://github.com/yk-lab/text2slack-mcp/issues/101)) ([90ae111](https://github.com/yk-lab/text2slack-mcp/commit/90ae1117a2aee0c207014376ee0417922de27ae5))
+* **validation:** add comprehensive webhook URL and message validation ([#114](https://github.com/yk-lab/text2slack-mcp/issues/114)) ([bd0a604](https://github.com/yk-lab/text2slack-mcp/commit/bd0a60444df1e543fa9448011c72e9be1f4dad58))
+
+
+### Bug Fixes
+
+* **mcp-server:** add graceful shutdown and signal handling ([#99](https://github.com/yk-lab/text2slack-mcp/issues/99)) ([e14fdf6](https://github.com/yk-lab/text2slack-mcp/commit/e14fdf659f11c3eafbb72a7bd6131c0751124e3a))
+* **mcp-server:** read version from package.json instead of hardcoding ([#95](https://github.com/yk-lab/text2slack-mcp/issues/95)) ([928aaf9](https://github.com/yk-lab/text2slack-mcp/commit/928aaf9219b4a7ac360b8d4320f92c0af512a165)), closes [#79](https://github.com/yk-lab/text2slack-mcp/issues/79)
+* optimize CI coverage workflow and add lcov.info to ignore files ([#7](https://github.com/yk-lab/text2slack-mcp/issues/7)) ([1cbf630](https://github.com/yk-lab/text2slack-mcp/commit/1cbf6304db5ddcb19b7bdeeb6c601abed1b343c6))
+* replace dependabot reviewers with CODEOWNERS ([#5](https://github.com/yk-lab/text2slack-mcp/issues/5)) ([5c6f8c2](https://github.com/yk-lab/text2slack-mcp/commit/5c6f8c240d6fd050d8990e039f99fd4f08230d90))
+* **slack-client:** add fetch timeout for Slack API calls ([#94](https://github.com/yk-lab/text2slack-mcp/issues/94)) ([daa79cf](https://github.com/yk-lab/text2slack-mcp/commit/daa79cfbaadf6f165782c3b921a5653560ed118e)), closes [#78](https://github.com/yk-lab/text2slack-mcp/issues/78)
+
 ## [Unreleased]
 
 ### Changed
