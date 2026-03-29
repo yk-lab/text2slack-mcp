@@ -56,7 +56,7 @@ jobs:
         run: pnpm test
 
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@v6
         if: ${{ !cancelled() && matrix.node-version == '22.x' }}
         with:
           use_oidc: true
